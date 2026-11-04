@@ -1028,6 +1028,11 @@ function updateReplayStepLabel(){
   label.textContent='Candle '+Math.min(activeReplayStep+1,total)+' / '+total+(activeReplayContext.length?' · Replay berperingkat':' · Snapshot sahaja');
   $('btn-replay-prev').disabled=activeReplayStep<=0;
   $('btn-replay-next').disabled=activeReplayStep>=total-1;
+  const scrub=$('replay-scrubber');
+  if(scrub){scrub.max=String(total-1);scrub.value=String(activeReplayStep);scrub.disabled=activeReplayContext.length<2;}
+  const timeLabel=$('pr-replay-time');
+  const candle=activeReplayContext[activeReplayStep];
+  if(timeLabel)timeLabel.textContent=candle&&Number.isFinite(Number(candle.t))?new Date(Number(candle.t)*1000).toLocaleString('ms-MY'):'Masa candle tidak tersedia';
 }
 function stepPatternReplay(delta){
   if(!activePatternReplayId)return;
@@ -1344,6 +1349,7 @@ function bind() {
   $('btn-close-replay').onclick=closePatternReplay;
   $('btn-replay-prev').onclick=()=>stepPatternReplay(-1);
   $('btn-replay-next').onclick=()=>stepPatternReplay(1);
+  $('replay-scrubber').oninput=event=>{stopAutoReplay();const target=Number(event.target.value);const delta=target-activeReplayStep;stepPatternReplay(delta);};
   $('btn-replay-auto').onclick=toggleAutoReplay;
   $('replay-speed').onchange=()=>{if(replayTimer!==null){stopAutoReplay();toggleAutoReplay();}};
   renderPatternReview();
