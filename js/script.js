@@ -737,12 +737,13 @@ function calculateMarketRegime(candles, interval) {
   const longRange=bars.reduce((sum,c)=>sum+c.h-c.l,0)/bars.length;
   const ratio=longRange>0?shortRange/longRange:1;
   let volatility='NORMAL',label='RANGING',trend='SIDEWAYS',reason='';
-  if(ratio>=1.6){volatility='TINGGI';label='HIGH VOLATILITY';reason='Purata range 10 candle terkini sekurang-kurangnya 1.6× purata 30 candle. Filter menahan signal ketika pergerakan luar biasa.';}
-  else if(ratio<=0.65){volatility='RENDAH';label='LOW VOLATILITY';reason='Purata range 10 candle terkini jauh lebih kecil daripada purata 30 candle. Pergerakan dianggap perlahan.';}
-  else if(spread>=0.001&&fast>slow){label='TRENDING';trend='BULLISH';reason='EMA 9 di atas EMA 21 dengan jarak relatif mencukupi; trend diklasifikasikan bullish.';}
-  else if(spread>=0.001&&fast<slow){label='TRENDING';trend='BEARISH';reason='EMA 9 di bawah EMA 21 dengan jarak relatif mencukupi; trend diklasifikasikan bearish.';}
-  else reason='Jarak EMA 9 dan EMA 21 kecil; pasaran diklasifikasikan sideways/ranging.';
-  return {label,trend,volatility,ratio,spread,allowSignal:label==='TRENDING',reason};
+  if(ratio>=1.6){volatility='TINGGI';label='HIGH VOLATILITY';reason='Range 10 candle terlalu besar berbanding purata 30 candle. Signal ditahan sementara untuk elak keadaan luar biasa.';}
+  else if(ratio<=0.65){volatility='RENDAH';label='LOW VOLATILITY';reason='Pergerakan perlahan; status ini dipaparkan sebagai konteks dan bukan sekatan signal.';}
+  else if(spread>=0.0002&&fast>slow){label='TRENDING';trend='BULLISH';reason='EMA 9 di atas EMA 21; trend diklasifikasikan bullish.';}
+  else if(spread>=0.0002&&fast<slow){label='TRENDING';trend='BEARISH';reason='EMA 9 di bawah EMA 21; trend diklasifikasikan bearish.';}
+  else reason='EMA 9 dan EMA 21 hampir; pasaran ranging. Pengesahan utama tetap H1/M15 dan engulfing.';
+  const allowSignal=ratio<1.6;
+  return {label,trend,volatility,ratio,spread,allowSignal,reason};
 }
 function renderMarketRegime(regime) {
   $('regime-label').textContent=regime.label;
@@ -760,14 +761,17 @@ function renderMtfAlignment() {
     el.textContent=value?.label||'MENUNGGU';
     el.className=value?.direction==='bull'?'bull':value?.direction==='bear'?'bear':'unknown';
   });
-  const known=rows.every(([,value])=>value&&['bull','bear'].includes(value.direction));
-  const same=known&&rows.every(([,value])=>value.direction===rows[0][1].direction);
-  const status=!known?'DATA TAK CUKUP':same?'ALL ALIGN':'CONFLICT';
+  // H1 + M15 are the required confirmation pair. H4/M5 are context only.
+  const h1=state.trendH1,m15=state.trendM15;
+  const known=!!(h1&&m15&&['bull','bear'].includes(h1.direction)&&['bull','bear'].includes(m15.direction));
+  const same=known&&h1.direction===m15.direction;
+  const status=!known?'DATA H1/M15 TAK CUKUP':same?'H1 + M15 SELARI':'H1 / M15 BERCANGGAH';
+  const extras=[['H4',state.trendH4],['M5',state.trendM5]].map(([tf,v])=>tf+' '+(v?.label||'MENUNGGU')).join(' · ');
   $('mtf-status').textContent=status;
   $('mtf-status').className='mtf-pill '+(same?'aligned':known?'conflict':'unknown');
-  $('mtf-reason').textContent=!known?'Sekurang-kurangnya satu timeframe belum mempunyai 25 candle tertutup yang sah.':same?'H4, H1, M15 dan M5 semuanya '+(rows[0][1].direction==='bull'?'BULLISH':'BEARISH')+'. Arah timeframe selari.':'Arah timeframe bercanggah: '+rows.map(([tf,value])=>tf+' '+value.label).join(' · ')+'.';
-  $('mtf-filter-status').textContent=same?'LULUS · '+(rows[0][1].direction==='bull'?'BUY BIAS':'SELL BIAS'):'BLOCK · WAIT';
-  return {aligned:same,side:same?rows[0][1].direction:null,status};
+  $('mtf-reason').textContent=!known?'H1 dan M15 perlu sekurang-kurangnya 25 candle tertutup yang sah.':same?'H1 dan M15 selari '+(h1.direction==='bull'?'BULLISH':'BEARISH')+'. H4/M5 ialah maklumat tambahan: '+extras+'.':'H1 dan M15 bercanggah. H4/M5 maklumat tambahan: '+extras+'.';
+  $('mtf-filter-status').textContent=same?'LULUS · '+(h1.direction==='bull'?'BUY BIAS':'SELL BIAS'):'BLOCK · WAIT';
+  return {aligned:same,side:same?h1.direction:null,status};
 }
 function renderAnalysis() {
   const candles = state.candles;
