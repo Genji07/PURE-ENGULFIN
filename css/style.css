@@ -468,3 +468,41 @@ footer{width:100%;overflow-wrap:anywhere}
   .analysis-tabs{position:relative !important;top:auto !important;z-index:1 !important;gap:5px;padding:7px}
   .analysis-tab{min-width:86px !important;padding:10px 11px;font-size:10px}
 }
+
+
+/* GENJI AI LAB — five integrated learning modules */
+.ai-lab-card{margin:0 0 14px;padding:14px;border:1px solid #315638;border-radius:12px;background:linear-gradient(145deg,#101b12,#080e09);min-width:0}
+.ai-lab-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.ai-lab-head strong{display:block;font-size:13px;color:#f3f8ef}
+.ai-lab-head small{display:block;font-size:10px;color:#9eae9b;margin-top:3px}
+.ai-lab-pill{display:inline-flex;padding:6px 9px;border:1px solid #496c3d;border-radius:20px;color:#f2cf36;font-size:9px;font-weight:900;white-space:nowrap}
+.ai-lab-stats,.ai-entry-grid,.ai-dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:10px 0}
+.ai-lab-stats>div,.ai-entry-grid>div,.ai-dashboard-grid>div{min-width:0;padding:10px 8px;border:1px solid #29452d;border-radius:8px;background:#0b140d}
+.ai-lab-stats span,.ai-entry-grid span,.ai-dashboard-grid span{display:block;color:#9eae9b;font-size:8px;font-weight:800;letter-spacing:.35px}
+.ai-lab-stats b,.ai-entry-grid b,.ai-dashboard-grid b{display:block;color:#f3f8ef;font-size:14px;margin-top:5px;overflow-wrap:anywhere}
+.ai-lab-note{padding:10px;border:1px solid #304b32;border-radius:8px;background:#101b12;color:#d8e5d3;font-size:11px;line-height:1.55;margin-top:9px}
+.ai-lab-subtitle{font-size:10px;font-weight:900;color:#f2cf36;margin:14px 0 7px}
+.ai-learning-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #233a26}
+.ai-learning-row:last-child{border-bottom:0}
+.ai-learning-row strong{display:block;font-size:10px}
+.ai-learning-row small{display:block;color:#9eae9b;font-size:9px;margin-top:3px}
+.ai-quality-checks{display:grid;gap:6px}
+.ai-check{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:8px;padding:9px;border:1px solid #304b32;border-radius:7px;background:#0b140d;font-size:10px}
+.ai-check.pass b{color:#19c463}.ai-check.fail b{color:#f2cf36}
+.ai-check small{font-size:8px;color:#9eae9b;font-weight:800}
+.ai-entry-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ai-backtest-controls{display:flex;align-items:end;gap:9px;flex-wrap:wrap}
+.ai-backtest-controls label{display:flex;flex-direction:column;gap:4px;color:#9eae9b;font-size:9px;font-weight:800;min-width:145px}
+.ai-backtest-controls select{background:#080d09;color:#f3f8ef;border:1px solid #365c38;border-radius:7px;padding:9px}
+.ai-backtest-controls button{min-height:38px}
+.ai-lab-disclaimer{margin:10px 0 0;color:#9eae9b;font-size:9px;line-height:1.55}
+@media(max-width:600px){
+ .ai-lab-card{padding:10px;margin-bottom:10px}
+ .ai-lab-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ai-entry-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ai-dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ai-check{grid-template-columns:16px 1fr auto;padding:8px 7px;font-size:9px}
+ .ai-backtest-controls{display:grid;grid-template-columns:1fr}
+ .ai-backtest-controls label{min-width:0}
+ .ai-backtest-controls button{width:100%}
+}
