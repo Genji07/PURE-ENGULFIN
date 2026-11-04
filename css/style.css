@@ -506,3 +506,12 @@ footer{width:100%;overflow-wrap:anywhere}
  .ai-backtest-controls label{min-width:0}
  .ai-backtest-controls button{width:100%}
 }
+
+/* GENJI DATA BACKUP */
+.ai-backup-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
+.ai-backup-stats>div{padding:10px;border:1px solid #29452d;border-radius:8px;background:#0b140d;min-width:0}
+.ai-backup-stats span{display:block;font-size:8px;color:#9eae9b;font-weight:800}
+.ai-backup-stats b{display:block;margin-top:5px;font-size:16px;color:#f3f8ef}
+.ai-backup-actions{display:flex;gap:8px;flex-wrap:wrap}
+.ai-backup-actions button{flex:1 1 180px;min-height:40px}
+@media(max-width:600px){.ai-backup-actions{display:grid;grid-template-columns:1fr}.ai-backup-actions button{width:100%}}
