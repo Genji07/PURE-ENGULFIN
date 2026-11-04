@@ -26,12 +26,26 @@
 <section class="analysis-card" id="analysis-card">
   <div class="analysis-tabs" role="tablist" aria-label="Analisis GENJI">
     <button class="analysis-tab active" data-tab="pure" role="tab" aria-selected="true">PURE ENGULFING</button>
+    <button class="analysis-tab" data-tab="market" role="tab" aria-selected="false">MARKET REGIME</button>
     <button class="analysis-tab" data-tab="reason" role="tab" aria-selected="false">REASON</button>
     <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
     <button class="analysis-tab" data-tab="zones" role="tab" aria-selected="false">S/R ZONES</button>
     <button class="analysis-tab" data-tab="memory" role="tab" aria-selected="false">AI MEMORY</button>
     <button class="analysis-tab" data-tab="log" role="tab" aria-selected="false">SIGNAL LOG</button>
+  </div>
+  <div class="analysis-pane" id="tab-market" role="tabpanel">
+    <section class="regime-card">
+      <div class="regime-head"><div><strong>GENJI SMART MARKET REGIME</strong><small>Keadaan pasaran berdasarkan candle tertutup timeframe carta</small></div><span id="regime-label" class="regime-pill">MENUNGGU DATA</span></div>
+      <div class="regime-grid">
+        <div><span>ARAH TREND</span><strong id="regime-trend">—</strong></div>
+        <div><span>VOLATILITY</span><strong id="regime-volatility">—</strong></div>
+        <div><span>RATIO VOLATILITY</span><strong id="regime-ratio">—</strong></div>
+      </div>
+      <div id="regime-reason" class="regime-reason">Menunggu sekurang-kurangnya 30 candle tertutup.</div>
+      <div class="regime-filter"><strong>SIGNAL FILTER</strong><span id="regime-filter-status">MENUNGGU DATA</span></div>
+      <p class="regime-disclaimer">Filter ialah tapisan rule-based. Klasifikasi pasaran boleh tersilap dan bukan ramalan harga. Signal hanya dibenarkan apabila regime diklasifikasikan TRENDING; keadaan lain menghasilkan WAIT.</p>
+    </section>
   </div>
   <div class="analysis-pane active" id="tab-pure" role="tabpanel">
     <div class="analysis-grid">
