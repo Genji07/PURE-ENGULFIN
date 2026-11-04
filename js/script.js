@@ -931,38 +931,57 @@ function renderPatternReview(){
   }).join(''):'<p>Tiada rekod untuk pilihan tapisan ini. Muat sejarah candle dan jalankan analisis AI dahulu.</p>';
 }
 let activePatternReplayId=null;
+let activeReplayContext=[];
+function replayContextFor(record){
+  if(record.interval!==state.interval||!Array.isArray(state.candles)||!state.candles.length)return [];
+  const seconds=({ '1m':60,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400 })[record.interval]||300;
+  let best=-1,distance=Infinity;
+  state.candles.forEach((c,i)=>{const d=Math.abs(Number(c.t)-Number(record.time));if(d<distance){distance=d;best=i;}});
+  if(best<0||distance>seconds*0.6)return [];
+  return state.candles.slice(Math.max(0,best-8),Math.min(state.candles.length,best+9)).map((c,i)=>({...c,isSetup:Math.max(0,best-8)+i===best}));
+}
 function openPatternReplay(id){
   const record=aiLearningRecords.find(r=>r.id===id);
   if(!record)return;
   activePatternReplayId=id;
+  activeReplayContext=replayContextFor(record);
   const panel=$('pr-replay');
   panel.hidden=false;
   $('pr-replay-title').textContent=(record.pattern||'PATTERN')+' · '+(record.side||'—');
-  $('pr-replay-subtitle').textContent=new Date(Number(record.time)*1000).toLocaleString('ms-MY')+' · '+(record.interval||'—')+' · '+(record.outcome||'PENDING');
+  $('pr-replay-subtitle').textContent=new Date(Number(record.time)*1000).toLocaleString('ms-MY')+' · '+(record.interval||'—')+' · '+(record.outcome||'PENDING')+' · '+(activeReplayContext.length?activeReplayContext.length+' candle konteks':'snapshot sahaja');
   const fmt=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):'—';
   $('pr-replay-values').innerHTML=[['OPEN',record.open],['HIGH',record.high],['LOW',record.low],['CLOSE',record.close]].map(([k,v])=>'<div><small>'+k+'</small><b>'+fmt(v)+'</b></div>').join('');
   $('pr-replay-meta').textContent='Body '+(Number.isFinite(Number(record.bodyRatio))?(Number(record.bodyRatio)*100).toFixed(0)+'%':'—')+' · H1 '+(record.h1||'—')+' · M15 '+(record.m15||'—')+' · Entry '+fmt(record.entry)+' · Stop '+fmt(record.stop)+' · Sasaran '+fmt(record.target)+' · Bars '+(record.bars??'—');
-  drawPatternReplay(record);
+  drawPatternReplay(record,activeReplayContext);
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function drawPatternReplay(record){
+function drawPatternReplay(record,context=[]){
   const canvas=$('pr-replay-canvas'),ctx=canvas.getContext('2d');
   if(!ctx)return;
   const w=canvas.width,h=canvas.height;
   ctx.clearRect(0,0,w,h);ctx.fillStyle='#071009';ctx.fillRect(0,0,w,h);
-  const values=[Number(record.high),Number(record.low),Number(record.open),Number(record.close)];
-  if(!values.every(Number.isFinite)||values[0]<=values[1]){
-    ctx.fillStyle='#f2cf36';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('OHLC tidak lengkap untuk replay',w/2,h/2);return;
-  }
-  const pad=32,top=Math.max(12,pad),bottom=h-pad;
-  const max=values[0],min=values[1],range=max-min||1;
-  const y=v=>top+(max-v)/range*(bottom-top);
-  ctx.strokeStyle='#29452d';ctx.lineWidth=1;
-  for(let i=0;i<=4;i++){const yy=top+(bottom-top)*i/4;ctx.beginPath();ctx.moveTo(70,yy);ctx.lineTo(w-70,yy);ctx.stroke();const price=max-range*i/4;ctx.fillStyle='#a8b8a4';ctx.font='12px system-ui';ctx.textAlign='left';ctx.fillText(price.toFixed(2),w-62,yy-5);}
-  const bullish=Number(record.close)>=Number(record.open),color=bullish?'#19c463':'#f2cf36',x=w/2,bodyTop=Math.min(y(record.open),y(record.close)),bodyHeight=Math.max(3,Math.abs(y(record.open)-y(record.close)));
-  ctx.strokeStyle=color;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x,y(record.high));ctx.lineTo(x,y(record.low));ctx.stroke();
-  ctx.fillStyle=color;ctx.fillRect(x-22,bodyTop,44,bodyHeight);
-  ctx.fillStyle='#f3f8ef';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(bullish?'BULLISH CANDLE':'BEARISH CANDLE',x,h-8);
+  const valid=c=>[c.o,c.h,c.l,c.c].every(v=>Number.isFinite(Number(v)))&&Number(c.h)>Number(c.l);
+  let bars=context.filter(valid);
+  if(!bars.length&&valid({o:record.open,h:record.high,l:record.low,c:record.close}))bars=[{o:Number(record.open),h:Number(record.high),l:Number(record.low),c:Number(record.close),isSetup:true}];
+  if(!bars.length){ctx.fillStyle='#f2cf36';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('OHLC tidak lengkap untuk replay',w/2,h/2);return;}
+  const max=Math.max(...bars.map(c=>Number(c.h))),min=Math.min(...bars.map(c=>Number(c.l))),range=max-min||1;
+  const left=54,right=w-54,top=20,bottom=h-34,y=v=>top+(max-v)/range*(bottom-top);
+  ctx.strokeStyle='#29452d';ctx.lineWidth=1;ctx.font='11px system-ui';ctx.fillStyle='#a8b8a4';ctx.textAlign='left';
+  for(let i=0;i<=4;i++){const yy=top+(bottom-top)*i/4;ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.fillText((max-range*i/4).toFixed(2),right+5,yy+4);}
+  const slot=(right-left)/bars.length,candleW=Math.max(4,Math.min(18,slot*.58));
+  bars.forEach((c,i)=>{
+    const x=left+slot*(i+.5),bull=Number(c.c)>=Number(c.o),color=c.isSetup?'#f2cf36':(bull?'#19c463':'#d95b52');
+    ctx.strokeStyle=color;ctx.lineWidth=c.isSetup?3:2;ctx.beginPath();ctx.moveTo(x,y(Number(c.h)));ctx.lineTo(x,y(Number(c.l)));ctx.stroke();
+    const bodyTop=Math.min(y(Number(c.o)),y(Number(c.c))),bodyHeight=Math.max(2,Math.abs(y(Number(c.o))-y(Number(c.c))));
+    ctx.fillStyle=color;ctx.fillRect(x-candleW/2,bodyTop,candleW,bodyHeight);
+    if(c.isSetup){ctx.fillStyle='#f2cf36';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('SETUP',x,13);}
+  });
+  ctx.fillStyle='#a8b8a4';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(bars.length>1?'Kuning = candle setup · Hijau = bullish · Merah = bearish':'SNAPSHOT CANDLE',w/2,h-8);
+}
+function closePatternReplay(){
+  $('pr-replay').hidden=true;
+  activePatternReplayId=null;
+  activeReplayContext=[];
 }
 function closePatternReplay(){
   $('pr-replay').hidden=true;
