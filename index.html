@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-pattern-replay-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-context-replay-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -223,7 +223,7 @@
         <canvas id="pr-replay-canvas" width="640" height="220" aria-label="Paparan candle sejarah pilihan"></canvas>
         <div id="pr-replay-values" class="pr-candle-grid"></div>
         <div id="pr-replay-meta" class="pr-meta"></div>
-        <p class="ai-lab-disclaimer">Replay ini memaparkan snapshot OHLC yang tersimpan, bukan keseluruhan pergerakan candle sebelum dan selepas setup. Rekod lama mungkin tiada OHLC lengkap.</p>
+        <p class="ai-lab-disclaimer">Replay konteks memaparkan sehingga 8 candle sebelum dan 8 selepas setup jika sejarah timeframe yang sama masih dimuatkan. Candle setup ditanda kuning. Jika sejarah tidak tersedia, paparan kembali kepada snapshot OHLC tersimpan.</p>
       </div>
       <div id="pr-list" class="pr-list"><p>Rekod review akan muncul selepas sejarah candle dianalisis.</p></div>
       <p class="ai-lab-disclaimer">*Win rate hanya mengira WIN dan LOSS simulasi yang selesai. Keputusan AMBIGUOUS, EXPIRED, PENDING dan INVALID tidak dikira. Rekod lama yang dibuat sebelum kemas kini mungkin tiada nilai OHLC penuh.</p>
