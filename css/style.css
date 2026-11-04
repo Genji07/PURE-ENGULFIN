@@ -353,3 +353,41 @@ footer{background:#0b120d;border-color:#29452d}
 a{color:#f2cf36}
 input,select,textarea{accent-color:#19c463}
 button:focus-visible,.analysis-tab:focus-visible,select:focus-visible{outline:2px solid #f2cf36;outline-offset:2px}
+
+
+/* GENJI LAYOUT ALIGNMENT FIX — desktop + mobile */
+*,*::before,*::after{box-sizing:border-box}
+.config{grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}
+.config>label{min-width:0;width:100%}
+.config select{width:100%;min-width:0}
+.config>.btn-row{grid-column:1/-1;width:100%;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap}
+.analysis-card,.analysis-pane,.analysis-pane>section{min-width:0;width:100%}
+.analysis-tabs{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));align-items:stretch;width:100%}
+.analysis-tab{min-width:0;width:100%;margin:0;padding:9px 4px;white-space:normal;line-height:1.2;overflow-wrap:anywhere}
+.analysis-grid,.performance-grid,.memory-summary,.zones-summary,.zone-columns,.regime-grid,.mtf-grid,.score-breakdown{min-width:0}
+.analysis-grid>* ,.performance-grid>* ,.memory-summary>* ,.zones-summary>* ,.zone-columns>* ,.regime-grid>* ,.mtf-grid>*{min-width:0}
+.performance-head,.log-head,.memory-head,.regime-head,.mtf-head,.confirmation-head{min-width:0}
+.performance-head>*,.log-head>*,.memory-head>*,.regime-head>*,.mtf-head>*{min-width:0;max-width:100%}
+footer{width:100%;overflow-wrap:anywhere}
+@media(max-width:900px){
+  .config{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .analysis-tabs{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+  .analysis-tabs::-webkit-scrollbar{display:none}
+  .analysis-tab{flex:0 0 auto;width:auto;min-width:82px;white-space:nowrap;padding:9px 10px}
+}
+@media(max-width:600px){
+  .config{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+  .config>.btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .config>.btn-row button{width:100%;min-width:0;padding:8px 2px;white-space:normal;line-height:1.15}
+  .analysis-pane{padding:10px}
+  .analysis-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .zones-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .zone-columns{grid-template-columns:1fr}
+  .mtf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .regime-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:360px){
+  .analysis-tab{min-width:76px;padding:8px}
+  .config>.btn-row button{font-size:9px}
+}
