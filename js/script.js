@@ -807,7 +807,7 @@ function buildAiLearning(){
     const bodyRatio=Math.abs(c.c-c.o)/Math.max(c.h-c.l,1e-8);
     const result=evaluateHistoricalPattern(candles,i,side,state.interval);
     const id=[state.interval,c.t,pattern.name].join('_');
-    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,patternType:pattern.type,bodyRatio:Number(bodyRatio.toFixed(3)),range:Number((c.h-c.l).toFixed(4)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
+    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,patternType:pattern.type,open:c.o,high:c.h,low:c.l,close:c.c,bodyRatio:Number(bodyRatio.toFixed(3)),range:Number((c.h-c.l).toFixed(4)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
   }
   const merged=new Map(aiLearningRecords.map(record=>[record.id,record]));
   current.forEach(record=>merged.set(record.id,record));
@@ -916,6 +916,29 @@ function exportBacktestCsv(){
   const csv=[fields.join(','),...lastBacktestResults.map(r=>fields.map(k=>q(r[k])).join(','))].join('\r\n');
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='genji-backtest-'+state.interval+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+
+
+function renderPatternReview(){
+  if(!$('pr-list'))return;
+  const tf=$('pr-filter-tf').value,outcome=$('pr-filter-outcome').value,side=$('pr-filter-side').value;
+  const rows=aiLearningRecords.filter(r=>(tf==='all'||r.interval===tf)&&(outcome==='all'||r.outcome===outcome)&&(side==='all'||r.side===side)).slice().sort((a,b)=>b.time-a.time);
+  const wins=rows.filter(r=>r.outcome==='WIN').length,losses=rows.filter(r=>r.outcome==='LOSS').length,done=wins+losses;
+  $('pr-count').textContent=rows.length+' REKOD';$('pr-total').textContent=String(rows.length);$('pr-wins').textContent=String(wins);$('pr-losses').textContent=String(losses);$('pr-rate').textContent=done?(wins/done*100).toFixed(1)+'%':'—';
+  $('pr-list').innerHTML=rows.length?rows.slice(0,40).map(r=>{
+    const fmt=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):'—';
+    return '<article class="pr-record"><div class="pr-record-head"><div><strong>'+r.pattern+' · '+r.side+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · '+r.interval+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div><div class="pr-candle-grid"><div><small>OPEN</small><b>'+fmt(r.open)+'</b></div><div><small>HIGH</small><b>'+fmt(r.high)+'</b></div><div><small>LOW</small><b>'+fmt(r.low)+'</b></div><div><small>CLOSE</small><b>'+fmt(r.close)+'</b></div></div><div class="pr-meta">Body '+(Number.isFinite(Number(r.bodyRatio))?(r.bodyRatio*100).toFixed(0)+'%':'—')+' · H1 '+(r.h1||'—')+' · M15 '+(r.m15||'—')+' · Bars '+(r.bars??'—')+'</div><div class="pr-meta">Entry '+fmt(r.entry)+' · Stop '+fmt(r.stop)+' · Sasaran simulasi '+fmt(r.target)+'</div></article>';
+  }).join(''):'<p>Tiada rekod untuk pilihan tapisan ini. Muat sejarah candle dan jalankan analisis AI dahulu.</p>';
+}
+function exportPatternReviewCsv(){
+  const tf=$('pr-filter-tf').value,outcome=$('pr-filter-outcome').value,side=$('pr-filter-side').value;
+  const rows=aiLearningRecords.filter(r=>(tf==='all'||r.interval===tf)&&(outcome==='all'||r.outcome===outcome)&&(side==='all'||r.side===side)).slice().sort((a,b)=>a.time-b.time);
+  if(!rows.length){$('pr-list').innerHTML='<p>Tiada rekod untuk dieksport.</p>';return;}
+  const fields=['time','interval','side','pattern','open','high','low','close','bodyRatio','h1','m15','entry','stop','target','outcome','bars','resolvedAt'];
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const csv=[fields.join(','),...rows.map(r=>fields.map(k=>q(r[k])).join(','))].join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='genji-pattern-review-'+(tf==='all'?'all':tf)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 
 function renderBackupStats(){
@@ -1173,6 +1196,11 @@ function bind() {
 
   $('btn-run-backtest').onclick=runAiBacktest;
   $('btn-export-backtest').onclick=exportBacktestCsv;
+  $('pr-filter-tf').onchange=renderPatternReview;
+  $('pr-filter-outcome').onchange=renderPatternReview;
+  $('pr-filter-side').onchange=renderPatternReview;
+  $('btn-export-review').onclick=exportPatternReviewCsv;
+  renderPatternReview();
   $('btn-load-history').onclick=loadHistoricalCandles;
   renderHistoryLoader();
   $('btn-export-backup').onclick=downloadGenjiBackup;
