@@ -1044,10 +1044,6 @@ function closePatternReplay(){
   activeReplayContext=[];
   activeReplayStep=0;
 }
-function closePatternReplay(){
-  $('pr-replay').hidden=true;
-  activePatternReplayId=null;
-}
 function exportPatternReviewCsv(){
   const tf=$('pr-filter-tf').value,outcome=$('pr-filter-outcome').value,side=$('pr-filter-side').value;
   const rows=aiLearningRecords.filter(r=>(tf==='all'||r.interval===tf)&&(outcome==='all'||r.outcome===outcome)&&(side==='all'||r.side===side)).slice().sort((a,b)=>a.time-b.time);
