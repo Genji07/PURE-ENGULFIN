@@ -29,6 +29,7 @@
     <button class="analysis-tab" data-tab="reason" role="tab" aria-selected="false">REASON</button>
     <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
+    <button class="analysis-tab" data-tab="zones" role="tab" aria-selected="false">S/R ZONES</button>
   </div>
   <div class="analysis-pane active" id="tab-pure" role="tabpanel">
     <div class="analysis-grid">
@@ -38,6 +39,8 @@
       <div class="metric"><span>M15 trend</span><strong id="a-m15">—</strong></div>
       <div class="metric"><span>Candle</span><strong id="a-candle">—</strong></div>
       <div class="metric"><span>Body strength</span><strong id="a-body">—</strong></div>
+      <div class="metric"><span>Nearest support</span><strong id="a-support">—</strong></div>
+      <div class="metric"><span>Nearest resistance</span><strong id="a-resistance">—</strong></div>
     </div>
   </div>
   <div class="analysis-pane" id="tab-reason" role="tabpanel">
@@ -47,6 +50,18 @@
     <div class="signal-result wait" id="a-signal">WAIT</div>
     <p class="signal-caption" id="a-signal-detail">Menunggu pattern dan confirmation.</p>
     <div class="signal-meta"><span>Timeframe carta: <b id="a-signal-tf">5m</b></span><span>Signal hanya selepas candle tutup</span></div>
+  </div>
+  <div class="analysis-pane" id="tab-zones" role="tabpanel">
+    <div class="zones-summary">
+      <div><span>SUPPORT TERDEKAT</span><strong id="zone-near-support">—</strong><small id="zone-support-distance">Belum dikira</small></div>
+      <div><span>RESISTANCE TERDEKAT</span><strong id="zone-near-resistance">—</strong><small id="zone-resistance-distance">Belum dikira</small></div>
+    </div>
+    <div class="zone-legend"><span><i class="zone-dot support"></i> Support</span><span><i class="zone-dot resistance"></i> Resistance</span><span>Pivot swing · minimum 2 sentuhan</span></div>
+    <div class="zone-columns">
+      <div><h3>Support zones</h3><div id="zone-support-list" class="zone-list"><p>Menunggu data.</p></div></div>
+      <div><h3>Resistance zones</h3><div id="zone-resistance-list" class="zone-list"><p>Menunggu data.</p></div></div>
+    </div>
+    <p class="zone-disclaimer">Zon dikira daripada pivot candle tertutup dan sejarah data yang sedang dimuatkan. Zon ialah kawasan anggaran, bukan paras tepat atau jaminan pantulan harga.</p>
   </div>
   <div class="analysis-pane" id="tab-performance" role="tabpanel">
     <div class="performance-head">
