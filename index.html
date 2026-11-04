@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-auto-compare-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-compare-filter-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -174,6 +174,9 @@
       <div class="plp-history-head">Rekod sejarah paling hampir</div><div id="plp-history" class="plp-history"><p>Belum ada sampel yang sepadan.</p></div>
       <div class="ac-panel">
         <div class="plp-history-head">GENJI AI AUTO-COMPARE</div>
+        <label class="ac-threshold-label">Minimum persamaan
+          <select id="ac-threshold"><option value="50">50% · Luas</option><option value="65" selected>65% · Seimbang</option><option value="75">75% · Ketat</option><option value="85">85% · Sangat ketat</option></select>
+        </label>
         <div class="ac-summary"><div><span>PADANAN TERBAIK</span><b id="ac-best">—</b></div><div><span>BODY BEZA</span><b id="ac-body-diff">—</b></div><div><span>ARAH TREND SAMA</span><b id="ac-trend">—</b></div></div>
         <div id="ac-results" class="ac-results"><p>Menunggu setup untuk dibandingkan.</p></div>
       </div>
