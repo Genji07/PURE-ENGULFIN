@@ -28,6 +28,7 @@
     <button class="analysis-tab active" data-tab="pure" role="tab" aria-selected="true">PURE ENGULFING</button>
     <button class="analysis-tab" data-tab="reason" role="tab" aria-selected="false">REASON</button>
     <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
+    <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
   </div>
   <div class="analysis-pane active" id="tab-pure" role="tabpanel">
     <div class="analysis-grid">
@@ -47,8 +48,25 @@
     <p class="signal-caption" id="a-signal-detail">Menunggu pattern dan confirmation.</p>
     <div class="signal-meta"><span>Timeframe carta: <b id="a-signal-tf">5m</b></span><span>Signal hanya selepas candle tutup</span></div>
   </div>
+  <div class="analysis-pane" id="tab-performance" role="tabpanel">
+    <div class="performance-head">
+      <div><strong>Dashboard Performance</strong><small id="perf-scope">XAUUSD · 5m · Rekod peranti ini</small></div>
+      <button id="btn-clear-performance" class="ghost" type="button">Padam rekod</button>
+    </div>
+    <div class="performance-grid">
+      <div class="perf-metric"><span>Jumlah signal</span><strong id="perf-total">0</strong></div>
+      <div class="perf-metric"><span>Win rate</span><strong id="perf-winrate">—</strong></div>
+      <div class="perf-metric"><span>WIN</span><strong id="perf-wins" class="perf-win">0</strong></div>
+      <div class="perf-metric"><span>LOSS</span><strong id="perf-losses" class="perf-loss">0</strong></div>
+      <div class="perf-metric"><span>PENDING</span><strong id="perf-pending">0</strong></div>
+      <div class="perf-metric"><span>EXPIRED / AMBIGUOUS</span><strong id="perf-other">0</strong></div>
+    </div>
+    <div class="performance-note">Simulasi 1R: entry pada close signal, stop pada high/low candle signal, sasaran 1R, maksimum 5 candle selepas signal. Bukan keputusan akaun sebenar.</div>
+    <div class="performance-history-title">Rekod signal terkini</div>
+    <div id="perf-history" class="performance-history"><p>Belum ada rekod signal. Dashboard mula merekod selepas signal BUY/SELL baharu disahkan.</p></div>
+  </div>
 </section>
-<footer>Corak visual: Bullish/Bearish Engulfing · Pin Bar · Doji. Data feed pihak ketiga; bukan arahan dagangan. Bullish/Bearish Engulfing · Pin Bar · Doji. Data feed pihak ketiga; bukan arahan dagangan.</footer>
+<footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
 <script src="js/script.js"></script>
 </body>
 </html>
