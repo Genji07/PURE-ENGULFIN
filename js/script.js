@@ -594,6 +594,34 @@ function updateHud() {
     ? 'Corak: ' + pattern.name : 'Corak: belum dikesan';
   renderAnalysis();
 }
+function calculateMarketRegime(candles, interval) {
+  const closed=candles.filter(c=>isClosedCandle(c,interval));
+  if(closed.length<30) return {label:'MENUNGGU DATA',trend:'—',volatility:'—',ratio:null,allowSignal:false,reason:'Perlukan sekurang-kurangnya 30 candle tertutup untuk klasifikasi.'};
+  const bars=closed.slice(-30);
+  const ema=(values,period)=>{const k=2/(period+1);let value=values[0];for(let i=1;i<values.length;i++)value=values[i]*k+value*(1-k);return value;};
+  const closes=bars.map(c=>c.c);
+  const fast=ema(closes.slice(-20),9),slow=ema(closes,21);
+  const spread=Math.abs(fast-slow)/Math.max(Math.abs(closes[closes.length-1]),1);
+  const shortRange=bars.slice(-10).reduce((sum,c)=>sum+c.h-c.l,0)/10;
+  const longRange=bars.reduce((sum,c)=>sum+c.h-c.l,0)/bars.length;
+  const ratio=longRange>0?shortRange/longRange:1;
+  let volatility='NORMAL',label='RANGING',trend='SIDEWAYS',reason='';
+  if(ratio>=1.6){volatility='TINGGI';label='HIGH VOLATILITY';reason='Purata range 10 candle terkini sekurang-kurangnya 1.6× purata 30 candle. Filter menahan signal ketika pergerakan luar biasa.';}
+  else if(ratio<=0.65){volatility='RENDAH';label='LOW VOLATILITY';reason='Purata range 10 candle terkini jauh lebih kecil daripada purata 30 candle. Pergerakan dianggap perlahan.';}
+  else if(spread>=0.001&&fast>slow){label='TRENDING';trend='BULLISH';reason='EMA 9 di atas EMA 21 dengan jarak relatif mencukupi; trend diklasifikasikan bullish.';}
+  else if(spread>=0.001&&fast<slow){label='TRENDING';trend='BEARISH';reason='EMA 9 di bawah EMA 21 dengan jarak relatif mencukupi; trend diklasifikasikan bearish.';}
+  else reason='Jarak EMA 9 dan EMA 21 kecil; pasaran diklasifikasikan sideways/ranging.';
+  return {label,trend,volatility,ratio,spread,allowSignal:label==='TRENDING',reason};
+}
+function renderMarketRegime(regime) {
+  $('regime-label').textContent=regime.label;
+  $('regime-label').className='regime-pill '+(regime.label==='TRENDING'?'trend':regime.label==='RANGING'?'range':regime.label==='HIGH VOLATILITY'?'high':'low');
+  $('regime-trend').textContent=regime.trend;
+  $('regime-volatility').textContent=regime.volatility;
+  $('regime-ratio').textContent=Number.isFinite(regime.ratio)?regime.ratio.toFixed(2)+'×':'—';
+  $('regime-reason').textContent=regime.reason;
+  $('regime-filter-status').textContent=regime.label==='TRENDING'?'LULUS · TRENDING SAHAJA':'BLOCK · WAIT';
+}
 function renderAnalysis() {
   const candles = state.candles;
   const closedIndex = candles.map((c,i)=>isClosedCandle(c,state.interval)?i:-1).filter(i=>i>=0).pop();
@@ -605,6 +633,7 @@ function renderAnalysis() {
   const range = candle ? Math.max(candle.h-candle.l,1e-8) : 1;
   const bodyRatio = body/range;
   const bodyStrong = bodyRatio >= 0.5;
+  const marketRegime=calculateMarketRegime(candles,state.interval);
   const trendOK = patternSide && h1 && m15 && h1.direction===patternSide && m15.direction===patternSide;
   const currentPrice=candle?.c;
   const nearestZones=getNearestZones(currentPrice);
@@ -637,11 +666,12 @@ function renderAnalysis() {
     reasons.push({ok:!!m15 && m15.direction===patternSide,text:'Trend M15: '+(m15?.label||'BELUM ADA')+'.'});
     if (patternSide==='bull') reasons.push({ok:!!supportRejection,text:zoneContext||'Tiada rejection support yang jelas; semak kedudukan zon support.'});
     if (patternSide==='bear') reasons.push({ok:!!resistanceRejection,text:zoneContext||'Tiada rejection resistance yang jelas; semak kedudukan zon resistance.'});
-    if (trendOK && bodyStrong) {
+    reasons.push({ok:marketRegime.allowSignal,text:'Market regime: '+marketRegime.label+' · '+marketRegime.reason});
+    if (trendOK && bodyStrong && marketRegime.allowSignal) {
       signal=patternSide==='bull'?'BUY':'SELL';
       detail='Engulfing, candle tertutup, body dan trend H1/M15 searah. Signal teknikal disahkan.';
     } else {
-      detail='Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.';
+      detail=!marketRegime.allowSignal?'Filter market regime: '+marketRegime.label+'. Signal ditahan; kekalkan WAIT.':'Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.';
     }
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
@@ -651,6 +681,7 @@ function renderAnalysis() {
   $('a-candle').textContent=candle?'CLOSED':'MENUNGGU';
   $('a-body').textContent=candle?(bodyRatio*100).toFixed(0)+'%':'—';
   renderZones();
+  renderMarketRegime(marketRegime);
   $('score-total').textContent=String(confirmationScore);
   $('score-bar').style.width=confirmationScore+'%';
   $('score-grade').textContent=scoreGrade;
