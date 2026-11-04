@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-context-replay-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-auto-compare-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -172,7 +172,12 @@
       <div class="plp-decision"><span>KEPUTUSAN SEMASA</span><strong id="plp-signal">WAIT</strong><p id="plp-reason">Menunggu candle tertutup dan analisis pattern.</p></div>
       <div class="plp-reasons" id="plp-reasons"><p>Reason BUY / SELL / WAIT akan dipaparkan di sini.</p></div>
       <div class="plp-history-head">Rekod sejarah paling hampir</div><div id="plp-history" class="plp-history"><p>Belum ada sampel yang sepadan.</p></div>
-      <p class="ai-lab-disclaimer">Pembelajaran ini menggunakan padanan ciri dan rekod simulasi yang tersimpan pada browser ini. Minimum 3 sampel sepadan sebelum ringkasan sejarah dipaparkan. Ia bukan model AI terlatih, bukan ramalan dan bukan arahan dagangan.</p>
+      <div class="ac-panel">
+        <div class="plp-history-head">GENJI AI AUTO-COMPARE</div>
+        <div class="ac-summary"><div><span>PADANAN TERBAIK</span><b id="ac-best">—</b></div><div><span>BODY BEZA</span><b id="ac-body-diff">—</b></div><div><span>ARAH TREND SAMA</span><b id="ac-trend">—</b></div></div>
+        <div id="ac-results" class="ac-results"><p>Menunggu setup untuk dibandingkan.</p></div>
+      </div>
+      <p class="ai-lab-disclaimer">Auto-Compare menyusun rekod lama berdasarkan persamaan body, julat candle dan trend H1/M15. Skor persamaan bukan kebarangkalian menang. Statistik hanya rekod simulasi tempatan, bukan ramalan atau arahan dagangan.</p>
     </section>
 
     <section class="ai-lab-card">
