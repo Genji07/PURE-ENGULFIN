@@ -17,3 +17,24 @@ button{background:var(--blue);color:#fff;border:0;border-radius:5px;padding:7px 
 .hint{position:absolute;bottom:10px;left:12px;font-size:10.5px;color:#5b6a82;pointer-events:none}
 footer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;padding:10px;background:var(--panel);border:1px solid var(--border);border-radius:6px}
 @media(max-width:600px){body{padding:0 8px 12px}.topbar{padding:10px 8px;margin:0 -8px 10px}.price-box .px{font-size:19px}#chart{height:430px}}
+
+/* GENJI analysis tabs */
+.analysis-card{background:var(--panel);border:1px solid var(--border);border-radius:9px;margin:12px 0;overflow:hidden}
+.analysis-tabs{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:#0e182b}
+.analysis-tab{flex:1;background:transparent;color:var(--muted);border:1px solid transparent;padding:10px 8px;font-size:11px}
+.analysis-tab.active{background:var(--panel2);border-color:var(--blue);color:var(--text)}
+.analysis-pane{display:none;padding:13px}.analysis-pane.active{display:block}
+.analysis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.metric{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:10px;min-width:0}
+.metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.35px}
+.metric strong{display:block;margin-top:4px;font-size:13px;overflow-wrap:anywhere}
+.reason-list{display:grid;gap:7px}.reason-item{padding:9px 10px;border-radius:6px;background:var(--panel2);border-left:3px solid var(--yellow);font-size:12px}
+.reason-item.pass{border-left-color:var(--green)}.reason-item.fail{border-left-color:var(--red)}
+.signal-result{font-size:30px;font-weight:800;text-align:center;padding:13px;border-radius:8px;letter-spacing:1px}
+.signal-result.buy{background:#123b36;color:#46d6b8;border:1px solid #237c6d}
+.signal-result.sell{background:#421f2a;color:#ff7777;border:1px solid #943d4b}
+.signal-result.wait{background:#3b3218;color:#f2c75c;border:1px solid #806b2b}
+.signal-caption{text-align:center;color:var(--muted);font-size:12px;margin:9px 0}
+.signal-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10px}
+.signal-meta b{color:var(--text)}
+@media(max-width:600px){.analysis-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-tab{font-size:9px;padding:9px 3px}.analysis-pane{padding:9px}}
