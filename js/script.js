@@ -18,7 +18,7 @@ function savePerformanceRecords() {
   try { localStorage.setItem(PERFORMANCE_KEY, JSON.stringify(performanceRecords.slice(-500))); }
   catch (error) { console.warn('GENJI: rekod performance tidak dapat disimpan', error); }
 }
-function registerPerformanceSignal(signal, candle, pattern) {
+function registerPerformanceSignal(signal, candle, pattern, features) {
   if (!candle || !pattern || !['BUY','SELL'].includes(signal)) return;
   const id = [state.interval, candle.t, signal, pattern.type].join('_');
   if (performanceRecords.some(record => record.id === id)) return;
@@ -31,10 +31,46 @@ function registerPerformanceSignal(signal, candle, pattern) {
     id, symbol:'XAUUSD', interval:state.interval, side:signal,
     pattern:pattern.name, patternType:pattern.type, signalTime:candle.t,
     entry, stop, target, risk, outcome:'PENDING', barsChecked:0,
-    createdAt:Date.now()
+    memoryFeatures:features, createdAt:Date.now()
   });
   performanceRecords = performanceRecords.slice(-500);
   savePerformanceRecords();
+}
+function compareMemoryFeatures(a, b) {
+  if (!a || !b) return 0;
+  let score=0, weight=0;
+  const checks=[
+    ['side',25],['patternType',15],['h1',10],['m15',10],
+    ['nearZone',10],['rejection',10]
+  ];
+  for (const [key,w] of checks) { weight+=w; if (a[key]===b[key]) score+=w; }
+  weight+=20;
+  score+=Math.max(0,20-Math.round(Math.abs((a.bodyRatio||0)-(b.bodyRatio||0))*100));
+  return score/weight;
+}
+function renderPatternMemory(currentFeatures) {
+  const candidates=performanceRecords.filter(record =>
+    record.interval===state.interval &&
+    record.memoryFeatures &&
+    record.outcome!=='PENDING' &&
+    ['WIN','LOSS'].includes(record.outcome)
+  ).map(record=>({record,similarity:compareMemoryFeatures(currentFeatures,record.memoryFeatures)}))
+   .filter(item=>item.similarity>=0.65)
+   .sort((a,b)=>b.similarity-a.similarity || b.record.signalTime-a.record.signalTime);
+  const wins=candidates.filter(item=>item.record.outcome==='WIN').length;
+  const losses=candidates.filter(item=>item.record.outcome==='LOSS').length;
+  const total=wins+losses;
+  $('memory-count').textContent=String(performanceRecords.filter(r=>r.interval===state.interval&&r.memoryFeatures).length)+' rekod';
+  $('memory-matches').textContent=String(total);
+  $('memory-wins').textContent=String(wins);
+  $('memory-losses').textContent=String(losses);
+  $('memory-rate').textContent=total?(wins/total*100).toFixed(1)+'%':'—';
+  $('memory-verdict').textContent=!currentFeatures?'Menunggu setup BUY/SELL untuk dibandingkan.':total<3?'Belum cukup sampel serupa. Perlukan sekurang-kurangnya 3 rekod selesai; jangan tafsir kadar ini sebagai ramalan.': 'Ditemui '+total+' setup hampir serupa. Statistik ini hanya ringkasan rekod simulasi lepas, bukan ramalan.';
+  const recent=candidates.slice(0,5);
+  $('memory-history').innerHTML=recent.length?recent.map(item=>{
+    const r=item.record;
+    return '<div class="performance-row"><div><strong>'+r.side+' · '+r.pattern+'</strong><small>'+new Date(r.signalTime*1000).toLocaleString('ms-MY')+' · Persamaan '+Math.round(item.similarity*100)+'% · '+r.interval+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>';
+  }).join(''):'<p>Belum ada setup lama yang serupa dan selesai dinilai. Memori akan terkumpul apabila rekod baharu disimpan.</p>';
 }
 function updatePerformanceOutcomes() {
   let changed = false;
@@ -448,9 +484,18 @@ function renderAnalysis() {
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
   $('a-signal-tf').textContent=state.interval;
-  if (signal !== 'WAIT' && candle && pattern) registerPerformanceSignal(signal, candle, pattern);
+  const memoryFeatures=pattern&&candle?{
+    side:signal, patternType:pattern.type,
+    h1:h1?.direction||'unknown', m15:m15?.direction||'unknown',
+    bodyRatio:Number(bodyRatio.toFixed(3)),
+    nearZone:!!(patternSide==='bull'?nearSupport:nearResistance),
+    rejection:patternSide==='bull'?supportRejection:patternSide==='bear'?resistanceRejection:false,
+    score:confirmationScore
+  }:null;
+  if (signal !== 'WAIT' && candle && pattern) registerPerformanceSignal(signal, candle, pattern, memoryFeatures);
   updatePerformanceOutcomes();
   renderPerformance();
+  renderPatternMemory(memoryFeatures);
 }
 function drawTag(ctx, x, y, text, background, foreground) {
   ctx.font = 'bold 10px system-ui';
@@ -626,6 +671,7 @@ function bind() {
     performanceRecords = [];
     savePerformanceRecords();
     renderPerformance();
+    renderPatternMemory(null);
   };
   document.querySelectorAll('.analysis-tab').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.analysis-tab').forEach(item => { item.classList.toggle('active',item===tab); item.setAttribute('aria-selected',item===tab?'true':'false'); });
