@@ -790,6 +790,7 @@ function buildAiLearning(){
   current.forEach(record=>merged.set(record.id,record));
   aiLearningRecords=[...merged.values()].slice(-3000);
   saveAiLearning();
+  renderBackupStats();
   return current;
 }
 function renderAiLab(context){
