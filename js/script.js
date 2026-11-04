@@ -2,7 +2,7 @@
 
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
-  candles: [], tick: null, tickUpdatedAt: 0, running: false, timer: null,
+  candles: [], tick: null, tickUpdatedAt: 0, candleUpdatedAt: 0, trendUpdatedAt: 0, tickLatencyMs: null, candleLatencyMs: null, trendLatencyMs: null, running: false, timer: null,
   candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null
 };
 let pollingRunId = 0;
@@ -388,11 +388,14 @@ function mergeCandles(existing,incoming,max=10000){
   return [...map.values()].sort((a,b)=>a.t-b.t).slice(-max);
 }
 async function fetchCandles(){
+  const requestStarted=Date.now();
   const url='https://biquote.io/api/XAUUSD/ohlc?interval='+encodeURIComponent(state.interval)+'&limit='+state.limit;
   const data=await getJson(url);
   const parsed=parseCandleBars(Array.isArray(data)?data:data.bars);
   if(!parsed.length)throw new Error('API tiada candle sah');
   state.candles=mergeCandles(state.candles,parsed);
+  state.candleUpdatedAt=Date.now();
+  state.candleLatencyMs=state.candleUpdatedAt-requestStarted;
   saveCachedCandles();
   detectPatterns();calculateSupportResistance();
 }
@@ -468,6 +471,7 @@ function getTrend(bars, interval) {
   return {label:'NEUTRAL', direction:'neutral'};
 }
 async function fetchTrend() {
+  const requestStarted=Date.now();
   try {
     const [h4,h1,m15,m5] = await Promise.all([
       fetchTrendTimeframe('4h'),fetchTrendTimeframe('1h'),
@@ -478,6 +482,8 @@ async function fetchTrend() {
     state.trendM15=getTrend(m15,'15m');
     state.trendM5=getTrend(m5,'5m');
     state.trendError=null;
+    state.trendUpdatedAt=Date.now();
+    state.trendLatencyMs=state.trendUpdatedAt-requestStarted;
     return true;
   } catch(error) {
     const missing={label:'DATA TAK ADA',direction:'unknown'};
@@ -496,6 +502,7 @@ async function refreshTrendIfNeeded(force=false) {
   finally { trendRequest=null; }
 }
 async function fetchTick() {
+  const requestStarted=Date.now();
   const data = await getJson('https://biquote.io/api/XAUUSD');
   const price = Number(data.mid ?? data.bid ?? data.last);
   if (!Number.isFinite(price) || price <= 0) throw new Error('Harga live tidak sah');
@@ -507,6 +514,7 @@ async function fetchTick() {
     stale: Boolean(data.stale)
   };
   state.tickUpdatedAt = Date.now();
+  state.tickLatencyMs = state.tickUpdatedAt-requestStarted;
 }
 function calculateSupportResistance() {
   const closed = state.candles.filter(c => isClosedCandle(c, state.interval));
@@ -635,6 +643,7 @@ function stop() {
   $('btn-start').disabled = false;
   $('btn-stop').disabled = true;
   renderTopbar();
+  renderApiHealth();
 }
 function renderTopbar() {
   const dot = $('conn-dot');
@@ -661,9 +670,40 @@ function renderTopbar() {
     $('live-change').textContent = '—';
   }
 }
+function renderApiHealth(){
+  const el=id=>document.getElementById(id);
+  if(!el('api-health-status'))return;
+  const now=Date.now(),age=stamp=>stamp?Math.max(0,Math.round((now-stamp)/1000)):Infinity;
+  const tickAge=age(state.tickUpdatedAt),candleAge=age(state.candleUpdatedAt),trendAge=age(state.trendUpdatedAt);
+  const tickOk=Boolean(state.tick&&tickAge<=30&&!state.tick.stale&&!state.tickError);
+  const candleOk=Boolean(state.candles.length&&candleAge<=45&&!state.candleError);
+  const trends=[state.trendH4,state.trendH1,state.trendM15,state.trendM5];
+  const mtfReady=trends.every(x=>x&&x.direction&&x.direction!=='unknown'&&x.direction!=='DATA TAK ADA');
+  const mtfOk=Boolean(mtfReady&&trendAge<=120&&!state.trendError);
+  const failures=[state.tickError,state.candleError,state.trendError].filter(Boolean);
+  const allOk=tickOk&&candleOk&&mtfOk,anyData=Boolean(state.tick||state.candles.length||trends.some(Boolean));
+  el('api-health-status').textContent=allOk?'SEMUA ONLINE':anyData?'SEMAK DATA':'MENUNGGU';
+  el('api-health-status').className='api-health-pill '+(allOk?'ok':anyData?'warn':'');
+  el('api-health-tick').textContent=tickOk?'ONLINE':state.tickError?'RALAT API':state.tick?'DATA LAMA':'MENUNGGU';
+  el('api-health-tick').className=tickOk?'ok-text':'bad-text';
+  el('api-health-tick-time').textContent=state.tickUpdatedAt?'Kemas kini '+tickAge+'s lalu'+(state.tickLatencyMs!==null?' · '+state.tickLatencyMs+'ms':''):'Belum ada respons harga';
+  el('api-health-tf-label').textContent=state.interval.toUpperCase();
+  el('api-health-candles').textContent=candleOk?'ONLINE':state.candleError?'RALAT API':state.candles.length?'CACHE / LAMA':'MENUNGGU';
+  el('api-health-candles').className=candleOk?'ok-text':'bad-text';
+  el('api-health-candle-detail').textContent=state.candles.length+' candle tersedia · '+(state.candleUpdatedAt?candleAge+'s sejak API berjaya':'belum ada respons API');
+  el('api-health-mtf').textContent=mtfOk?'4/4 ONLINE':state.trendError?'RALAT / DATA KURANG':trends.filter(x=>x&&x.direction&&x.direction!=='unknown').length+'/4 DATA';
+  el('api-health-mtf').className=mtfOk?'ok-text':'bad-text';
+  el('api-health-mtf-detail').textContent=state.trendUpdatedAt?'Kemas kini '+trendAge+'s lalu'+(state.trendLatencyMs!==null?' · '+state.trendLatencyMs+'ms':''):(state.trendError||'Menunggu empat timeframe');
+  el('api-health-latency').textContent=[state.tickLatencyMs,state.candleLatencyMs,state.trendLatencyMs].map(v=>v===null?'—':v+'ms').join(' / ');
+  el('api-health-latency-detail').textContent='Tick / Candle / MTF';
+  el('api-health-last-check').textContent='Semakan UI: '+new Date().toLocaleTimeString('ms-MY');
+  el('api-health-errors').textContent=failures.length?'Ralat: '+failures.join(' · '):allOk?'Tiada ralat aktif.':'Status belum lengkap atau data sudah luput.';
+}
+
 function renderAll() {
   renderHistoryLoader();
   renderTopbar();
+  renderApiHealth();
   renderChart();
   updateHud();
 }
