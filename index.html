@@ -31,6 +31,7 @@
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
     <button class="analysis-tab" data-tab="zones" role="tab" aria-selected="false">S/R ZONES</button>
     <button class="analysis-tab" data-tab="memory" role="tab" aria-selected="false">AI MEMORY</button>
+    <button class="analysis-tab" data-tab="log" role="tab" aria-selected="false">SIGNAL LOG</button>
   </div>
   <div class="analysis-pane active" id="tab-pure" role="tabpanel">
     <div class="analysis-grid">
@@ -75,6 +76,13 @@
       </div>
       <p class="score-disclaimer">Skor ialah markah pematuhan kriteria sistem, bukan kebarangkalian menang, ramalan harga atau jaminan hasil.</p>
     </section>
+  </div>
+  <div class="analysis-pane" id="tab-log" role="tabpanel">
+    <div class="log-head"><div><strong>GENJI SIGNAL LOG</strong><small>Sejarah signal dan snapshot candle yang direkod pada peranti ini</small></div><button id="btn-export-log" class="ghost" type="button">Eksport CSV</button></div>
+    <div class="log-filters"><label>Jenis signal<select id="log-filter"><option value="ALL">Semua</option><option value="BUY">BUY</option><option value="SELL">SELL</option><option value="WAIT">WAIT</option></select></label><span id="log-count">0 rekod</span></div>
+    <div id="log-history" class="log-history"><p>Belum ada rekod signal. Rekod baharu akan disimpan apabila candle tertutup dianalisis.</p></div>
+    <div class="log-replay" id="log-replay"><strong>Snapshot candle</strong><p>Pilih "Lihat candle" pada mana-mana rekod untuk paparkan OHLC tersimpan.</p></div>
+    <p class="log-disclaimer">Rekod bermula selepas ciri ini dipasang; ia tidak mengisi semula sejarah lama. Snapshot ialah rekod indikator, bukan transaksi sebenar atau nasihat dagangan.</p>
   </div>
   <div class="analysis-pane" id="tab-memory" role="tabpanel">
     <div class="memory-head"><div><strong>GENJI PATTERN MEMORY</strong><small>Perbandingan setup semasa dengan rekod lama yang hampir serupa</small></div><span id="memory-count" class="memory-count">0 rekod</span></div>
