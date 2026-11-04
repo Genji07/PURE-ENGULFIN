@@ -321,13 +321,14 @@
         <button id="btn-import-backup" type="button">Import backup JSON</button>
         <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
       </div>
+      <div id="backup-reminder" class="ai-lab-note">Peringatan backup setiap 7 hari.</div>
       <div id="backup-status" class="ai-lab-note">Data disimpan dalam browser/peranti ini. Buat backup sebelum tukar browser atau telefon.</div>
       <p class="ai-lab-disclaimer">Import akan menggabungkan rekod yang sah dan mengelakkan ID pendua. Fail backup hanya diproses dalam browser ini; jangan kongsi fail jika ia mengandungi data peribadi.</p>
     </section>
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-backup-outcome-v1-20261105"></script>
+<script src="js/script.js?v=genji-weekly-backup-reminder-v1-20261105"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("GENJI PWA:", error)));
