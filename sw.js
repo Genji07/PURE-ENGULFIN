@@ -1,4 +1,4 @@
-const CACHE_NAME = "genji-pwa-v4";
+const CACHE_NAME = "genji-pwa-v5";
 const APP_FILES = [
   "./index.html",
   "./manifest.json",
