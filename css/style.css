@@ -611,3 +611,7 @@ footer{width:100%;overflow-wrap:anywhere}
 .ac-threshold-label{display:grid;gap:5px;margin:8px 0;color:#aebba9;font-size:9px;font-weight:800}
 .ac-threshold-label select{width:100%;max-width:260px;background:#0c160e;color:#f0f5ec;border:1px solid #36543a;border-radius:7px;padding:9px;font-size:10px}
 .ac-note{font-size:8px;color:#aebba9;line-height:1.5;margin:2px 0 5px}
+
+
+/* GENJI step-by-step replay controls */
+.pr-replay-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0;flex-wrap:wrap}.pr-replay-controls strong{font-size:12px;color:#f2cf36;text-align:center;flex:1}.pr-replay-controls button{min-height:38px}.pr-replay-controls button:disabled{opacity:.4;cursor:not-allowed}@media(max-width:520px){.pr-replay-controls{display:grid;grid-template-columns:1fr 1fr}.pr-replay-controls strong{grid-column:1/-1;grid-row:1}.pr-replay-controls button{width:100%;font-size:12px}}
