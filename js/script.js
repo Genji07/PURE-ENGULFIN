@@ -346,6 +346,17 @@ function parseCandleBars(bars) {
   for(const c of parsed){if(!unique.length||c.t>unique[unique.length-1].t)unique.push(c);else if(c.t===unique[unique.length-1].t)unique[unique.length-1]=c;}
   return unique;
 }
+const CANDLE_CACHE_PREFIX='genji_pure_engulfing_candles_v1_';
+function loadCachedCandles(interval){
+  try{const rows=JSON.parse(localStorage.getItem(CANDLE_CACHE_PREFIX+interval)||'[]');return Array.isArray(rows)?parseCandleBars(rows).slice(-10000):[];}catch(_){return[];}
+}
+function saveCachedCandles(){
+  try{localStorage.setItem(CANDLE_CACHE_PREFIX+state.interval,JSON.stringify(state.candles.slice(-10000)));}catch(error){console.warn('GENJI: cache candle tidak dapat disimpan',error);}
+}
+function restoreCachedCandles(){
+  state.candles=loadCachedCandles(state.interval);
+  if(state.candles.length){detectPatterns();calculateSupportResistance();updatePerformanceOutcomes();renderAll();}
+}
 function mergeCandles(existing,incoming,max=10000){
   const map=new Map();existing.forEach(c=>map.set(c.t,c));incoming.forEach(c=>map.set(c.t,c));
   return [...map.values()].sort((a,b)=>a.t-b.t).slice(-max);
@@ -356,6 +367,7 @@ async function fetchCandles(){
   const parsed=parseCandleBars(Array.isArray(data)?data:data.bars);
   if(!parsed.length)throw new Error('API tiada candle sah');
   state.candles=mergeCandles(state.candles,parsed);
+  saveCachedCandles();
   detectPatterns();calculateSupportResistance();
 }
 function renderHistoryLoader(){
@@ -380,7 +392,9 @@ async function loadHistoricalCandles(){
     const bars=parseCandleBars(Array.isArray(data)?data:data.bars);
     if(!bars.length)throw new Error('Tiada candle sejarah sah diterima.');
     state.candles=mergeCandles(state.candles,bars,10000);
+    saveCachedCandles();
     detectPatterns();calculateSupportResistance();renderAll();renderHistoryLoader();
+    updatePerformanceOutcomes();runAiBacktest();
     const days=(state.candles.at(-1).t-state.candles[0].t)/86400;
     status.textContent='SELESAI';
     note.textContent='API memulangkan '+bars.length.toLocaleString('en-US')+' candle. Jumlah unik disimpan: '+state.candles.length.toLocaleString('en-US')+'. Liputan kira-kira '+(days>=1?days.toFixed(1)+' hari':(days*24).toFixed(1)+' jam')+'.';
@@ -557,6 +571,7 @@ function detectPatterns() {
 async function tickOnce() {
   if (!state.running) return;
   const results = await Promise.allSettled([fetchCandles(), fetchTick(), fetchTrend()]);
+  if(results[0].status==='fulfilled'){updatePerformanceOutcomes();runAiBacktest();}
   state.candleError = results[0].status === 'rejected' ? results[0].reason.message : null;
   state.tickError = results[1].status === 'rejected' ? results[1].reason.message : null;
   renderAll();
@@ -1403,7 +1418,8 @@ function bind() {
   }));
   $('sel-interval').onchange = event => {
     state.interval = event.target.value;
-    state.candles = []; state.patterns = []; state.zones = []; state.historyLoadedAt = null;
+    state.candles = loadCachedCandles(state.interval); state.patterns = []; state.zones = []; state.historyLoadedAt = null;
+    if(state.candles.length){detectPatterns();calculateSupportResistance();updatePerformanceOutcomes();renderAll();}
     renderHistoryLoader();
     if (state.running) { stop(); start(); }
     else { fetchCandles().then(renderAll).catch(error => {
@@ -1489,7 +1505,17 @@ function bind() {
   else window.addEventListener('resize', scheduleRender);
 }
 
-bind();
-renderTopbar();
-renderChart();
-start();
+async function autoBoot(){
+  bind();
+  restoreCachedCandles();
+  renderTopbar();renderChart();
+  $('history-load-status').textContent='AUTO';
+  $('history-load-note').textContent='Auto Start: memulihkan cache, memuat sejarah candle, menjalankan backtest dan menyambung data live…';
+  $('btn-load-history').textContent='Auto memuat…';
+  await loadHistoricalCandles();
+  updatePerformanceOutcomes();
+  runAiBacktest();
+  start();
+  $('history-load-note').textContent+=' Auto Start aktif; data akan dikemas kini semasa dashboard dibuka.';
+}
+autoBoot();
