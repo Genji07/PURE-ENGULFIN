@@ -3,7 +3,7 @@
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
   candles: [], tick: null, running: false, timer: null,
-  candleError: null, tickError: null, patterns: [], trendH1: null, trendM15: null, trendError: null
+  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendError: null
 };
 const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
 const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
@@ -151,6 +151,7 @@ async function fetchCandles() {
   if (!unique.length) throw new Error('API tiada candle sah');
   state.candles = unique;
   detectPatterns();
+  calculateSupportResistance();
 }
 async function fetchTrendTimeframe(interval) {
   const url = 'https://biquote.io/api/XAUUSD/ohlc?interval=' + encodeURIComponent(interval) + '&limit=80';
@@ -213,6 +214,67 @@ async function fetchTick() {
     marketState: data.marketState,
     stale: Boolean(data.stale)
   };
+}
+function calculateSupportResistance() {
+  const closed = state.candles.filter(c => isClosedCandle(c, state.interval));
+  if (closed.length < 12) { state.zones = []; return; }
+  const sample = closed.slice(-60).map(c => Math.max(c.h - c.l, 0));
+  const sortedRanges = sample.slice().sort((a,b)=>a-b);
+  const medianRange = sortedRanges[Math.floor(sortedRanges.length / 2)] || 1;
+  const tolerance = Math.max(medianRange * 0.35, 0.25);
+  const candidates = [];
+  for (let i=2; i<closed.length-2; i++) {
+    const candle = closed[i];
+    const left = closed.slice(i-2,i);
+    const right = closed.slice(i+1,i+3);
+    if (left.every(c=>c.h < candle.h) && right.every(c=>c.h <= candle.h)) {
+      candidates.push({type:'resistance',price:candle.h,index:i,time:candle.t});
+    }
+    if (left.every(c=>c.l > candle.l) && right.every(c=>c.l >= candle.l)) {
+      candidates.push({type:'support',price:candle.l,index:i,time:candle.t});
+    }
+  }
+  const zones = [];
+  for (const point of candidates) {
+    let zone = zones.find(z=>z.type===point.type && Math.abs(z.mid-point.price)<=tolerance);
+    if (!zone) {
+      zone={type:point.type,prices:[point.price],mid:point.price,touches:1,lastIndex:point.index,lastTime:point.time};
+      zones.push(zone);
+    } else {
+      zone.prices.push(point.price);
+      zone.mid=zone.prices.reduce((sum,value)=>sum+value,0)/zone.prices.length;
+      zone.touches=zone.prices.length;
+      zone.lastIndex=point.index;
+      zone.lastTime=point.time;
+    }
+  }
+  state.zones=zones.filter(z=>z.touches>=2).map(z=>({
+    ...z,low:z.mid-tolerance*0.35,high:z.mid+tolerance*0.35,
+    tolerance
+  })).sort((a,b)=>b.touches-a.touches || b.lastIndex-a.lastIndex).slice(0,12);
+}
+function getNearestZones(price) {
+  if (!Number.isFinite(price)) return {support:null,resistance:null};
+  const supports=state.zones.filter(z=>z.type==='support' && z.mid<=price).sort((a,b)=>b.mid-a.mid);
+  const resistances=state.zones.filter(z=>z.type==='resistance' && z.mid>=price).sort((a,b)=>a.mid-b.mid);
+  return {support:supports[0]||null,resistance:resistances[0]||null};
+}
+function renderZones() {
+  const price=state.tick?.mid ?? state.candles[state.candles.length-1]?.c;
+  const nearest=getNearestZones(price);
+  const fmt=z=>z?z.mid.toFixed(2):'—';
+  $('zone-near-support').textContent=fmt(nearest.support);
+  $('zone-near-resistance').textContent=fmt(nearest.resistance);
+  $('zone-support-distance').textContent=nearest.support?Math.abs(price-nearest.support.mid).toFixed(2)+' jarak harga · '+nearest.support.touches+' sentuhan':'Tiada zon support dikenal pasti';
+  $('zone-resistance-distance').textContent=nearest.resistance?Math.abs(nearest.resistance.mid-price).toFixed(2)+' jarak harga · '+nearest.resistance.touches+' sentuhan':'Tiada zon resistance dikenal pasti';
+  $('a-support').textContent=fmt(nearest.support);
+  $('a-resistance').textContent=fmt(nearest.resistance);
+  const renderList=(type,id)=>{
+    const list=state.zones.filter(z=>z.type===type).sort((a,b)=>type==='support'?b.mid-a.mid:a.mid-b.mid).slice(0,6);
+    $(id).innerHTML=list.length?list.map(z=>'<div class="zone-row"><strong>'+z.low.toFixed(2)+' – '+z.high.toFixed(2)+'</strong><small>'+z.touches+' sentuhan · tengah '+z.mid.toFixed(2)+'</small></div>').join(''):'<p>Belum ada zon kukuh (perlukan sekurang-kurangnya 2 pivot).</p>';
+  };
+  renderList('support','zone-support-list');
+  renderList('resistance','zone-resistance-list');
 }
 function detectPatterns() {
   const found = [];
@@ -332,6 +394,14 @@ function renderAnalysis() {
   const bodyRatio = body/range;
   const bodyStrong = bodyRatio >= 0.5;
   const trendOK = patternSide && h1 && m15 && h1.direction===patternSide && m15.direction===patternSide;
+  const currentPrice=candle?.c;
+  const nearestZones=getNearestZones(currentPrice);
+  const zoneTolerance=state.zones[0]?.tolerance || 1;
+  const nearSupport=nearestZones.support && Math.abs(currentPrice-nearestZones.support.mid)<=zoneTolerance*2;
+  const nearResistance=nearestZones.resistance && Math.abs(nearestZones.resistance.mid-currentPrice)<=zoneTolerance*2;
+  const supportRejection=!!(candle && nearestZones.support && candle.l<=nearestZones.support.high && candle.c>nearestZones.support.mid);
+  const resistanceRejection=!!(candle && nearestZones.resistance && candle.h>=nearestZones.resistance.low && candle.c<nearestZones.resistance.mid);
+  const zoneContext=patternSide==='bull'?(nearSupport?'Harga berhampiran support. ':'')+(supportRejection?'Candle menunjukkan rejection ke atas di support.':''):patternSide==='bear'?(nearResistance?'Harga berhampiran resistance. ':'')+(resistanceRejection?'Candle menunjukkan rejection ke bawah di resistance.':''):'';
   const reasons=[];
   let signal='WAIT', detail='Menunggu pattern engulfing yang lengkap dan pengesahan trend H1/M15.';
   if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
@@ -341,6 +411,8 @@ function renderAnalysis() {
     reasons.push({ok:bodyStrong,text:'Kekuatan body '+(bodyRatio*100).toFixed(0)+'% daripada range candle ('+(bodyStrong?'memadai':'agak kecil')+').' });
     reasons.push({ok:!!h1 && h1.direction===patternSide,text:'Trend H1: '+(h1?.label||'BELUM ADA')+'.'});
     reasons.push({ok:!!m15 && m15.direction===patternSide,text:'Trend M15: '+(m15?.label||'BELUM ADA')+'.'});
+    if (patternSide==='bull') reasons.push({ok:!!supportRejection,text:zoneContext||'Tiada rejection support yang jelas; semak kedudukan zon support.'});
+    if (patternSide==='bear') reasons.push({ok:!!resistanceRejection,text:zoneContext||'Tiada rejection resistance yang jelas; semak kedudukan zon resistance.'});
     if (trendOK && bodyStrong) {
       signal=patternSide==='bull'?'BUY':'SELL';
       detail='Engulfing, candle tertutup, body dan trend H1/M15 searah. Signal teknikal disahkan.';
@@ -354,6 +426,7 @@ function renderAnalysis() {
   $('a-m15').textContent=m15?.label||'MENUNGGU';
   $('a-candle').textContent=candle?'CLOSED':'MENUNGGU';
   $('a-body').textContent=candle?(bodyRatio*100).toFixed(0)+'%':'—';
+  renderZones();
   $('a-reason').innerHTML=reasons.map(r=>'<div class="reason-item '+(r.ok?'pass':'fail')+'">'+(r.ok?'✓ ':'! ')+r.text+'</div>').join('');
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
@@ -424,6 +497,21 @@ function renderChart() {
   ctx.fillRect(0, 0, drawWidth, drawHeight);
   ctx.fillStyle = '#0c1322';
   ctx.fillRect(0, priceHeight, drawWidth, volumeHeight);
+  // Draw support/resistance bands behind the candles.
+  for (const zone of state.zones) {
+    if (zone.high < minPrice || zone.low > maxPrice) continue;
+    const topY=y(zone.high), bottomY=y(zone.low);
+    const support=zone.type==='support';
+    ctx.fillStyle=support?'rgba(38,166,154,0.10)':'rgba(239,83,80,0.10)';
+    ctx.fillRect(0,topY,drawWidth,Math.max(2,bottomY-topY));
+    ctx.strokeStyle=support?'rgba(38,166,154,0.62)':'rgba(239,83,80,0.62)';
+    ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(0,y(zone.mid));ctx.lineTo(drawWidth,y(zone.mid));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=support?'#58cdbd':'#ff8585';
+    ctx.font='bold 9px system-ui';ctx.textAlign='left';
+    ctx.fillText((support?'S ':'R ')+zone.mid.toFixed(2)+' · '+zone.touches+'x',5,Math.max(10,topY-3));
+  }
   ctx.strokeStyle = '#1c2941';
   ctx.fillStyle = '#aab7cc';
   ctx.font = '11px system-ui';
