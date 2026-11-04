@@ -1344,11 +1344,18 @@ function exportPatternReviewCsv(){
   a.href=url;a.download='genji-pattern-review-'+(tf==='all'?'all':tf)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 
+function readHistoricalOutcomeBackupRows(){
+  try{
+    const rows=JSON.parse(localStorage.getItem('genjiHistoricalOutcomeV2')||'[]');
+    return Array.isArray(rows)?rows.filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string'&&r.horizons&&typeof r.horizons==='object'):[];
+  }catch(_){return [];}
+}
 function renderBackupStats(){
   if(!$('backup-ai-count'))return;
   $('backup-ai-count').textContent=String(aiLearningRecords.length);
   $('backup-perf-count').textContent=String(performanceRecords.length);
   $('backup-log-count').textContent=String(signalLog.length);
+  $('backup-outcome-count').textContent=String(readHistoricalOutcomeBackupRows().length);
 }
 function downloadGenjiBackup(){
   const payload={
@@ -1358,7 +1365,8 @@ function downloadGenjiBackup(){
     data:{
       aiLearning:aiLearningRecords,
       performance:performanceRecords,
-      signalLog:signalLog
+      signalLog:signalLog,
+      historicalOutcome:readHistoricalOutcomeBackupRows()
     }
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
@@ -1388,16 +1396,31 @@ async function importGenjiBackup(file){
     const ai=validArray(data.aiLearning).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string'&&Number.isFinite(Number(r.time)));
     const perf=validArray(data.performance).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string');
     const logs=validArray(data.signalLog).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string');
+    const outcomes=validArray(data.historicalOutcome).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string'&&Number.isFinite(Number(r.time))&&['bull','bear'].includes(r.side)&&r.horizons&&typeof r.horizons==='object');
     aiLearningRecords=mergeById(aiLearningRecords,ai,r=>r.id,3000);
     performanceRecords=mergeById(performanceRecords,perf,r=>r.id,500);
     signalLog=mergeById(signalLog,logs,r=>r.id,1000);
+    const existingOutcomes=readHistoricalOutcomeBackupRows();
+    const outcomeMap=new Map(existingOutcomes.map(r=>[r.id,r]));
+    outcomes.forEach(incoming=>{
+      const existing=outcomeMap.get(incoming.id);
+      if(!existing){outcomeMap.set(incoming.id,incoming);return;}
+      const merged={...incoming,...existing,horizons:{...incoming.horizons,...existing.horizons}};
+      [3,5,10].forEach(h=>{const key=String(h);if(!existing.horizons?.[key]?.ready&&incoming.horizons?.[key]?.ready)merged.horizons[key]=incoming.horizons[key];});
+      outcomeMap.set(incoming.id,merged);
+    });
+    const mergedOutcomes=[...outcomeMap.values()].sort((a,b)=>(a.time||0)-(b.time||0)).slice(-2000);
+    aiLearningRecords=aiLearningRecords.slice(-3000);
+    performanceRecords=performanceRecords.slice(-500);
+    signalLog=signalLog.slice(-1000);
     saveAiLearning();
     savePerformanceRecords();
     saveSignalLog();
+    localStorage.setItem('genjiHistoricalOutcomeV2',JSON.stringify(mergedOutcomes));
     renderBackupStats();
     renderPerformance();
     renderSignalLog();
-    $('backup-status').textContent='Import selesai: '+ai.length+' rekod AI, '+perf.length+' performance dan '+logs.length+' signal log dibaca. Rekod sedia ada dikekalkan dan digabungkan.';
+    $('backup-status').textContent='Import selesai: '+ai.length+' AI, '+perf.length+' performance, '+logs.length+' signal log dan '+outcomes.length+' pemerhatian sejarah. Rekod sedia ada dikekalkan dan digabungkan.';
   }catch(error){
     $('backup-status').textContent='Import gagal: '+error.message;
   }
