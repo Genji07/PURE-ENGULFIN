@@ -1423,7 +1423,8 @@ function bind() {
   };
 
   $('btn-run-backtest').onclick=runAiBacktest;
-  $('btn-run-scan').onclick=scanHistoricalSignals;\n  $('scan-filter').onchange=renderHistoricalScan;
+  $('btn-run-scan').onclick=scanHistoricalSignals;
+  $('scan-filter').onchange=renderHistoricalScan;
   $('btn-export-backtest').onclick=exportBacktestCsv;
   $('pr-filter-tf').onchange=renderPatternReview;
   $('pr-filter-outcome').onchange=renderPatternReview;
