@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-history-loader-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-backtest-pro-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -216,6 +216,9 @@
         <div><span>LOSS</span><b id="bt-losses">0</b></div>
         <div><span>WIN RATE</span><b id="bt-rate">—</b></div>
       </div>
+      <div class="bt-side-grid"><div><strong>BUY</strong><span id="bt-buy-summary">0 setup · —</span></div><div><strong>SELL</strong><span id="bt-sell-summary">0 setup · —</span></div><div><strong>AMBIGUOUS</strong><span id="bt-ambiguous">0</span></div><div><strong>EXPIRED / PENDING</strong><span id="bt-expired">0</span></div></div>
+      <div class="bt-results-head"><strong>KEPUTUSAN SETIAP SETUP</strong><button id="btn-export-backtest" type="button">Eksport CSV</button></div>
+      <div id="bt-results-list" class="bt-results-list"><p>Jalankan backtest untuk melihat keputusan satu per satu.</p></div>
       <div id="ai-backtest-note" class="ai-lab-note">Tekan Jalankan backtest untuk menguji data candle yang tersedia.</div>
       <p class="ai-lab-disclaimer">Backtest menggunakan candle yang dimuatkan dalam browser sahaja, entry close signal, invalidation pada high/low signal, sasaran 1R dan maksimum 5 candle tertutup. Jika sejarah tidak meliputi 30 hari penuh, keputusan hanya untuk tempoh data yang ada. Spread, slippage dan komisen tidak dimasukkan.</p>
     </section>
@@ -249,6 +252,6 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-history-loader-20261104b"></script>
+<script src="js/script.js?v=genji-backtest-pro-20261104"></script>
 </body>
 </html>
