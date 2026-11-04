@@ -1,7 +1,7 @@
 'use strict';
 
 const state = {
-  interval: '5m', pollMs: 10000, limit: 200, engDef: 'body',
+  interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
   candles: [], tick: null, running: false, timer: null,
   candleError: null, tickError: null, patterns: [], trendH1: null, trendM15: null, trendError: null
 };
@@ -44,7 +44,7 @@ async function fetchCandles() {
     l: Number(bar.low ?? bar.l),
     c: Number(bar.close ?? bar.c),
     v: Number(bar.tickVolume ?? bar.volume ?? 0),
-    isOpen: bar.isOpen === true, isClosed: bar.isClosed === true, hasCloseFlag: typeof bar.isOpen === 'boolean' || typeof bar.isClosed === 'boolean'
+    isOpen: bar.isOpen === true, isClosed: bar.isClosed === true, hasOpenFlag: typeof bar.isOpen === 'boolean', hasClosedFlag: typeof bar.isClosed === 'boolean'
   })).filter(c =>
     Number.isFinite(c.t) &&
     [c.o, c.h, c.l, c.c].every(Number.isFinite) &&
@@ -71,7 +71,8 @@ async function fetchTrendTimeframe(interval) {
     c: Number(b.close ?? b.c),
     isOpen: b.isOpen === true,
     isClosed: b.isClosed === true,
-    hasCloseFlag: typeof b.isOpen === 'boolean' || typeof b.isClosed === 'boolean'
+    hasOpenFlag: typeof b.isOpen === 'boolean',
+    hasClosedFlag: typeof b.isClosed === 'boolean'
   })).filter(x => Number.isFinite(x.t) && Number.isFinite(x.c)).sort((a,b)=>a.t-b.t);
 }
 function candleDurationMs(interval) {
@@ -79,7 +80,8 @@ function candleDurationMs(interval) {
   return map[interval] || 300000;
 }
 function isClosedCandle(candle, interval) {
-  if (candle.hasCloseFlag) return candle.isClosed || !candle.isOpen;
+  if (candle.hasClosedFlag) return candle.isClosed;
+  if (candle.hasOpenFlag) return !candle.isOpen;
   return candle.t * 1000 + candleDurationMs(interval) <= Date.now();
 }
 function emaLast(values, period) {
@@ -132,15 +134,21 @@ function detectPatterns() {
     const lower = Math.min(current.o, current.c) - current.l;
     let name = '';
 
-    if (previous.c < previous.o && current.c > current.o &&
-      (state.engDef === 'full'
-        ? current.h >= previous.h && current.l <= previous.l
-        : current.o <= previous.c && current.c >= previous.o)) {
+    const bodyBull = previous.c < previous.o && current.c > current.o &&
+      current.o <= previous.c && current.c >= previous.o;
+    const bodyBear = previous.c > previous.o && current.c < current.o &&
+      current.o >= previous.c && current.c <= previous.o;
+    const fullBull = previous.c < previous.o && current.c > current.o &&
+      current.h >= previous.h && current.l <= previous.l;
+    const fullBear = previous.c > previous.o && current.c < current.o &&
+      current.h >= previous.h && current.l <= previous.l;
+    const bullMatch = state.engDef === 'full' ? fullBull :
+      state.engDef === 'body' ? bodyBull : (bodyBull || fullBull);
+    const bearMatch = state.engDef === 'full' ? fullBear :
+      state.engDef === 'body' ? bodyBear : (bodyBear || fullBear);
+    if (bullMatch) {
       name = 'Bullish Engulfing';
-    } else if (previous.c > previous.o && current.c < current.o &&
-      (state.engDef === 'full'
-        ? current.h >= previous.h && current.l <= previous.l
-        : current.o >= previous.c && current.c <= previous.o)) {
+    } else if (bearMatch) {
       name = 'Bearish Engulfing';
     } else if (body / range <= 0.1) {
       name = 'Doji';
@@ -149,7 +157,7 @@ function detectPatterns() {
     } else if (upper >= body * 2 && lower <= body * 0.7) {
       name = 'Bearish Pin Bar';
     }
-    if (name) found.push({ index: i, name });
+    if (name) found.push({ index: i, name, type: (fullBull || fullBear) ? 'FULL CANDLE' : (bodyBull || bodyBear) ? 'PURE BODY' : '—' });
   }
   state.patterns = found;
 }
@@ -238,7 +246,7 @@ function renderAnalysis() {
   if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
   else if (!pattern) reasons.push({ok:false,text:'Tiada engulfing pada candle tertutup terakhir. Sistem tidak mengeluarkan signal.'});
   else {
-    reasons.push({ok:true,text:pattern.name+' dikesan pada candle tertutup terakhir.'});
+    reasons.push({ok:true,text:pattern.name+' ('+pattern.type+') dikesan pada candle tertutup terakhir.'});
     reasons.push({ok:bodyStrong,text:'Kekuatan body '+(bodyRatio*100).toFixed(0)+'% daripada range candle ('+(bodyStrong?'memadai':'agak kecil')+').' });
     reasons.push({ok:!!h1 && h1.direction===patternSide,text:'Trend H1: '+(h1?.label||'BELUM ADA')+'.'});
     reasons.push({ok:!!m15 && m15.direction===patternSide,text:'Trend M15: '+(m15?.label||'BELUM ADA')+'.'});
@@ -250,7 +258,7 @@ function renderAnalysis() {
     }
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
-  $('a-type').textContent=state.engDef==='body'?'PURE BODY':'FULL CANDLE';
+  $('a-type').textContent=pattern?.type || (state.engDef==='both'?'BODY + FULL':state.engDef==='body'?'PURE BODY':'FULL CANDLE');
   $('a-h1').textContent=h1?.label||'MENUNGGU';
   $('a-m15').textContent=m15?.label||'MENUNGGU';
   $('a-candle').textContent=candle?'CLOSED':'MENUNGGU';
