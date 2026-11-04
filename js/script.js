@@ -333,37 +333,59 @@ async function getJson(url) {
   if (!response.ok) throw new Error('HTTP ' + response.status);
   return response.json();
 }
-async function fetchCandles() {
-  const url = 'https://biquote.io/api/XAUUSD/ohlc?interval=' +
-    encodeURIComponent(state.interval) + '&limit=' + state.limit;
-  const data = await getJson(url);
-  const bars = Array.isArray(data) ? data : data.bars;
-  if (!Array.isArray(bars)) throw new Error('Format OHLC tidak dikenali');
-
-  const parsed = bars.map(bar => ({
-    t: unixTime(bar.openTime ?? bar.time ?? bar.t ?? bar.timestamp),
-    o: Number(bar.open ?? bar.o),
-    h: Number(bar.high ?? bar.h),
-    l: Number(bar.low ?? bar.l),
-    c: Number(bar.close ?? bar.c),
-    v: Number(bar.tickVolume ?? bar.volume ?? 0),
-    isOpen: bar.isOpen === true, isClosed: bar.isClosed === true, hasOpenFlag: typeof bar.isOpen === 'boolean', hasClosedFlag: typeof bar.isClosed === 'boolean'
-  })).filter(c =>
-    Number.isFinite(c.t) &&
-    [c.o, c.h, c.l, c.c].every(Number.isFinite) &&
-    c.h >= Math.max(c.o, c.c, c.l) &&
-    c.l <= Math.min(c.o, c.c, c.h)
-  ).sort((a, b) => a.t - b.t);
-
-  const unique = [];
-  for (const candle of parsed) {
-    if (!unique.length || candle.t > unique[unique.length - 1].t) unique.push(candle);
-    else if (candle.t === unique[unique.length - 1].t) unique[unique.length - 1] = candle;
-  }
-  if (!unique.length) throw new Error('API tiada candle sah');
-  state.candles = unique;
-  detectPatterns();
-  calculateSupportResistance();
+function parseCandleBars(bars) {
+  if(!Array.isArray(bars))throw new Error('Format OHLC tidak dikenali');
+  const parsed=bars.map(bar=>({
+    t:unixTime(bar.openTime??bar.time??bar.t??bar.timestamp),
+    o:Number(bar.open??bar.o),h:Number(bar.high??bar.h),l:Number(bar.low??bar.l),c:Number(bar.close??bar.c),
+    v:Number(bar.tickVolume??bar.volume??0),
+    isOpen:bar.isOpen===true,isClosed:bar.isClosed===true,
+    hasOpenFlag:typeof bar.isOpen==='boolean',hasClosedFlag:typeof bar.isClosed==='boolean'
+  })).filter(c=>Number.isFinite(c.t)&&[c.o,c.h,c.l,c.c].every(Number.isFinite)&&c.h>=Math.max(c.o,c.c,c.l)&&c.l<=Math.min(c.o,c.c,c.h)).sort((a,b)=>a.t-b.t);
+  const unique=[];
+  for(const c of parsed){if(!unique.length||c.t>unique[unique.length-1].t)unique.push(c);else if(c.t===unique[unique.length-1].t)unique[unique.length-1]=c;}
+  return unique;
+}
+function mergeCandles(existing,incoming,max=10000){
+  const map=new Map();existing.forEach(c=>map.set(c.t,c));incoming.forEach(c=>map.set(c.t,c));
+  return [...map.values()].sort((a,b)=>a.t-b.t).slice(-max);
+}
+async function fetchCandles(){
+  const url='https://biquote.io/api/XAUUSD/ohlc?interval='+encodeURIComponent(state.interval)+'&limit='+state.limit;
+  const data=await getJson(url);
+  const parsed=parseCandleBars(Array.isArray(data)?data:data.bars);
+  if(!parsed.length)throw new Error('API tiada candle sah');
+  state.candles=mergeCandles(state.candles,parsed);
+  detectPatterns();calculateSupportResistance();
+}
+function renderHistoryLoader(){
+  if(!$('history-loaded-count'))return;
+  const candles=state.candles;
+  $('history-loaded-count').textContent=candles.length.toLocaleString('en-US');
+  $('history-loaded-tf').textContent=state.interval;
+  if(candles.length>1){
+    const days=(candles[candles.length-1].t-candles[0].t)/86400;
+    $('history-loaded-span').textContent=days>=1?days.toFixed(1)+' hari':(days*24).toFixed(1)+' jam';
+  }else $('history-loaded-span').textContent='—';
+}
+async function loadHistoricalCandles(){
+  const button=$('btn-load-history'),status=$('history-load-status'),note=$('history-load-note');
+  const requested=Number($('history-load-limit').value);
+  button.disabled=true;button.textContent='Sedang memuat…';status.textContent='MEMUAT';
+  note.textContent='Meminta sehingga '+requested.toLocaleString('en-US')+' candle '+state.interval+' daripada penyedia data…';
+  try{
+    const tf=state.interval;
+    const data=await getJson('https://biquote.io/api/XAUUSD/ohlc?interval='+encodeURIComponent(tf)+'&limit='+requested);
+    if(tf!==state.interval)throw new Error('Timeframe berubah semasa pemuatan. Cuba semula.');
+    const bars=parseCandleBars(Array.isArray(data)?data:data.bars);
+    if(!bars.length)throw new Error('Tiada candle sejarah sah diterima.');
+    state.candles=mergeCandles(state.candles,bars,10000);
+    detectPatterns();calculateSupportResistance();renderAll();renderHistoryLoader();
+    const days=(state.candles.at(-1).t-state.candles[0].t)/86400;
+    status.textContent='SELESAI';
+    note.textContent='API memulangkan '+bars.length.toLocaleString('en-US')+' candle. Jumlah unik disimpan: '+state.candles.length.toLocaleString('en-US')+'. Liputan kira-kira '+(days>=1?days.toFixed(1)+' hari':(days*24).toFixed(1)+' jam')+'.';
+  }catch(error){status.textContent='RALAT';note.textContent='Gagal memuat sejarah: '+error.message+'. Data sedia ada tidak dipadamkan.';}
+  finally{button.disabled=false;button.textContent='Muat sejarah';renderHistoryLoader();}
 }
 async function fetchTrendTimeframe(interval) {
   const url = 'https://biquote.io/api/XAUUSD/ohlc?interval=' + encodeURIComponent(interval) + '&limit=80';
@@ -1127,6 +1149,8 @@ function bind() {
   };
 
   $('btn-run-backtest').onclick=runAiBacktest;
+  $('btn-load-history').onclick=loadHistoricalCandles;
+  renderHistoryLoader();
   $('btn-export-backup').onclick=downloadGenjiBackup;
   $('btn-import-backup').onclick=()=>$('backup-file-input').click();
   $('backup-file-input').onchange=event=>importGenjiBackup(event.target.files?.[0]);
@@ -1144,6 +1168,8 @@ function bind() {
   }));
   $('sel-interval').onchange = event => {
     state.interval = event.target.value;
+    state.candles = []; state.patterns = []; state.zones = []; state.historyLoadedAt = null;
+    renderHistoryLoader();
     if (state.running) { stop(); start(); }
     else { fetchCandles().then(renderAll).catch(error => {
       state.candleError = error.message; renderAll();
