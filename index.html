@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD · Live Candlestick (Free API)</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2e; --panel2:#16233d; --border:#22314f;
+    --text:#e6edf7; --muted:#8b9bb4;
+    --green:#22c55e; --red:#ef4444; --yellow:#eab308;
+    --blue:#3b82f6; --orange:#f97316;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:0 20px 20px;background:var(--bg);color:var(--text);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;}
+
+  /* ---- TOP BAR ---- */
+  .topbar{position:sticky;top:0;z-index:10;background:rgba(11,18,32,.95);
+    backdrop-filter:blur(6px);border-bottom:1px solid var(--border);
+    padding:12px 20px;margin:0 -20px 18px;display:flex;align-items:center;
+    gap:20px;flex-wrap:wrap;}
+  .topbar .title{flex:1;min-width:200px;}
+  .topbar h1{font-size:17px;margin:0 0 2px;}
+  .topbar .sub{color:var(--muted);margin:0;font-size:12px;}
+  .live-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);
+    display:inline-block;margin-right:7px;vertical-align:middle;}
+  .live-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.6s infinite;}
+  .live-dot.err{background:var(--red);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  .price-box{display:flex;align-items:baseline;gap:10px;
+    font-variant-numeric:tabular-nums;}
+  .price-box .sym{font-size:12px;color:var(--muted);}
+  .price-box .px{font-size:24px;font-weight:700;}
+  .price-box .chg{font-size:13px;font-weight:600;}
+
+  /* ---- CONFIG ---- */
+  .config{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:12px 16px;margin-bottom:16px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;}
+  .config label{display:flex;flex-direction:column;font-size:11px;color:var(--muted);
+    gap:4px;text-transform:uppercase;letter-spacing:.4px;}
+  .config select,.config input{background:var(--panel2);border:1px solid var(--border);
+    color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;}
+  .config select:focus,.config input:focus{outline:none;border-color:var(--blue);}
+  .btn-row{display:flex;gap:8px;}
+  button{background:var(--blue);color:#fff;border:none;border-radius:6px;
+    padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;
+    font-family:inherit;white-space:nowrap;}
+  button:hover{opacity:.9;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button.ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+  button.green{background:var(--green);}
+  button.danger{background:var(--red);}
+
+  /* ---- CARDS ---- */
+  .status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;margin-bottom:16px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;}
+  .card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--muted);margin-bottom:5px;}
+  .card .value{font-size:16px;font-weight:700;margin-bottom:3px;}
+  .card .hint{font-size:11.5px;color:var(--muted);}
+
+  /* ---- CHART ---- */
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:16px;margin-bottom:16px;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .panel-head h2{margin:0;font-size:13px;text-transform:uppercase;
+    letter-spacing:.4px;color:var(--text);}
+  .legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap;}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .dot.green{background:var(--green);} .dot.red{background:var(--red);}
+  .dot.yellow{background:var(--yellow);} .dot.blue{background:var(--blue);}
+
+  #chart{width:100%;height:400px;display:block;background:var(--panel2);border-radius:8px;}
+
+  .muted{color:var(--muted);} .green{color:var(--green);} .red{color:var(--red);}
+  .yellow{color:var(--yellow);} .blue{color:var(--blue);} .orange{color:var(--orange);}
+
+  footer{font-size:12px;color:var(--muted);text-align:center;margin-top:16px;
+    padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="title">
+    <h1>XAU/USD · Live Candlestick</h1>
+    <p class="sub"><span id="conn-dot" class="live-dot"></span><span id="conn-text">Sedia</span></p>
+  </div>
+  <div class="price-box">
+    <span class="sym">XAU/USD</span>
+    <span class="px" id="live-price">—</span>
+    <span class="chg muted" id="live-change">—</span>
+  </div>
+</div>
+
+<section class="config">
+  <label>Timeframe
+    <select id="sel-interval">
+      <option value="1m">1 minit</option>
+      <option value="5m" selected>5 minit</option>
+      <option value="15m">15 minit</option>
+      <option value="30m">30 minit</option>
+      <option value="1h">1 jam</option>
+      <option value="4h">4 jam</option>
+      <option value="1d">1 hari</option>
+    </select>
+  </label>
+  <label>Auto-refresh
+    <select id="sel-poll">
+      <option value="5000">5 saat</option>
+      <option value="10000" selected>10 saat</option>
+      <option value="30000">30 saat</option>
+      <option value="60000">60 saat</option>
+    </select>
+  </label>
+  <label>Bilangan candle
+    <select id="sel-limit">
+      <option value="60">60</option>
+      <option value="100" selected>100</option>
+      <option value="200">200</option>
+    </select>
+  </label>
+  <div class="btn-row">
+    <button id="btn-start" class="green">▶ Start</button>
+    <button id="btn-stop" class="ghost" disabled>■ Stop</button>
+  </div>
+  <div class="btn-row">
+    <button id="btn-refresh" class="ghost">↻ Refresh</button>
+  </div>
+</section>
+
+<section class="status-grid">
+  <div class="card">
+    <div class="label">Harga Terkini</div>
+    <div class="value" id="v-price">—</div>
+    <div class="hint" id="h-price">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Candle Terakhir</div>
+    <div class="value" id="v-candle">—</div>
+    <div class="hint" id="h-candle">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Status Feed</div>
+    <div class="value" id="v-feed">—</div>
+    <div class="hint" id="h-feed">—</div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Chart Candlestick</h2>
+    <div class="legend">
+      <span><i class="dot green"></i>Bullish</span>
+      <span><i class="dot red"></i>Bearish</span>
+      <span><i class="dot yellow"></i>Candle forming</span>
+    </div>
+  </div>
+  <canvas id="chart"></canvas>
+</section>
+
+<footer>
+  Data dari <b>biquote.io</b> — free, no API key, feed MetaTrader 5.
+  Chart bergerak mengikut poll yang dipilih.
+</footer>
+
+<script>
+/* =========================================================
+   STATE
+   ========================================================= */
+const state = {
+  interval: '5m',
+  pollMs: 10000,
+  limit: 100,
+  candles: [],   // { t, o, h, l, c }
+  tick: null,    // { mid, bid, ask, dayDiffPercent, ... }
+  running: false,
+  timer: null,
+  lastErr: null,
+};
+
+/* =========================================================
+   FETCH: OHLC CANDLES
+   ========================================================= */
+async function fetchCandles(){
+  const url = `https://biquote.io/api/XAUUSD/ohlc?interval=${state.interval}&limit=${state.limit}`;
+  const r = await fetch(url, { cache: 'no-store' });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  if(!Array.isArray(data.bars)) throw new Error('Format bars tidak sah');
+
+  // biquote pulangkan bars oldest→newest
+  state.candles = data.bars.map(b => ({
+    t: new Date(b.time || b.t || b.timestamp).getTime() / 1000,
+    o: +b.open,
+    h: +b.high,
+    l: +b.low,
+    c: +b.close,
+  })).filter(c => isFinite(c.o) && isFinite(c.c));
+
+  if(state.candles.length === 0) throw new Error('Tiada candle');
+}
+
+/* =========================================================
+   FETCH: LIVE TICK
+   ========================================================= */
+async function fetchTick(){
+  const r = await fetch('https://biquote.io/api/XAUUSD', { cache: 'no-store' });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  state.tick = {
+    mid: +d.mid,
+    bid: +d.bid,
+    ask: +d.ask,
+    high: +d.high,
+    low: +d.low,
+    dayDiffPercent: +d.dayDiffPercent,
+    timestamp: d.timestamp,
+    source: d.source,
+  };
+}
+
+/* =========================================================
+   POLL LOOP
+   ========================================================= */
+async function tickOnce(){
+  if(!state.running) return;
+  try{
+    await Promise.all([fetchCandles(), fetchTick()]);
+    state.lastErr = null;
+    renderAll();
+  }catch(e){
+    state.lastErr = e.message || String(e);
+    renderTopbar();
+  }finally{
+    if(state.running){
+      state.timer = setTimeout(tickOnce, state.pollMs);
+    }
+  }
+}
+
+function start(){
+  if(state.running) return;
+  state.running = true;
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  tickOnce();
+}
+
+function stop(){
+  state.running = false;
+  if(state.timer){ clearTimeout(state.timer); state.timer = null; }
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+  renderTopbar();
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+function renderAll(){
+  renderTopbar();
+  renderChart();
+  renderStatus();
+}
+
+function renderTopbar(){
+  const dot = document.getElementById('conn-dot');
+  const txt = document.getElementById('conn-text');
+  dot.className = 'live-dot';
+
+  if(state.lastErr){
+    dot.classList.add('err');
+    txt.textContent = 'RALAT: ' + state.lastErr;
+  }else if(state.running){
+    dot.classList.add('on');
+    txt.textContent = 'LIVE · kemas kini setiap ' + (state.pollMs/1000) + 's';
+  }else{
+    txt.textContent = 'Berhenti';
+  }
+
+  const px = document.getElementById('live-price');
+  const chg = document.getElementById('live-change');
+  if(state.tick && isFinite(state.tick.mid)){
+    px.textContent = state.tick.mid.toFixed(2);
+    const d = state.tick.dayDiffPercent;
+    if(isFinite(d)){
+      chg.textContent = (d>=0?'+':'') + d.toFixed(2) + '%';
+      chg.className = 'chg ' + (d>=0?'green':'red');
+    }else{
+      chg.textContent = '—';
+      chg.className = 'chg muted';
+    }
+  }
+}
+
+function renderStatus(){
+  const last = state.candles[state.candles.length-1];
+  const prev = state.candles[state.candles.length-2];
+
+  const vp = document.getElementById('v-price');
+  const hp = document.getElementById('h-price');
+  const vc = document.getElementById('v-candle');
+  const hc = document.getElementById('h-candle');
+  const vf = document.getElementById('v-feed');
+  const hf = document.getElementById('h-feed');
+
+  if(state.tick){
+    vp.textContent = state.tick.mid.toFixed(2);
+    vp.className = 'value';
+    hp.textContent = `Bid ${state.tick.bid?.toFixed(2) ?? '—'} · Ask ${state.tick.ask?.toFixed(2) ?? '—'}`;
+  }else{
+    vp.textContent = '—'; vp.className = 'value muted'; hp.textContent = '—';
+  }
+
+  if(last && prev){
+    const bull = last.c >= last.o;
+    const body = Math.abs(last.c - last.o).toFixed(2);
+    vc.textContent = bull ? 'BULLISH' : 'BEARISH';
+    vc.className = 'value ' + (bull ? 'green' : 'red');
+    hc.textContent = `O ${last.o.toFixed(2)} · H ${last.h.toFixed(2)} · L ${last.l.toFixed(2)} · C ${last.c.toFixed(2)} (body ${body})`;
+  }else{
+    vc.textContent = '—'; vc.className = 'value muted'; hc.textContent = '—';
+  }
+
+  vf.textContent = state.running ? 'AKTIF' : 'BERHENTI';
+  vf.className = 'value ' + (state.running ? 'green' : 'muted');
+  hf.textContent = state.tick?.source ?? 'biquote.io · MT5';
+}
+
+/* =========================================================
+   CHART (Canvas candlestick)
+   ========================================================= */
+function renderChart(){
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const candles = state.candles;
+  if(!candles.length) return;
+
+  const pad = { top:16, right:72, bottom:18, left:10 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const hi = Math.max(...candles.map(c=>c.h));
+  const lo = Math.min(...candles.map(c=>c.l));
+  const padR = (hi-lo||1)*0.06;
+  const maxP = hi+padR, minP = lo-padR;
+  const rng = maxP-minP;
+  const yOf = p => pad.top + ch - ((p-minP)/rng)*ch;
+
+  // grid + label harga
+  ctx.strokeStyle = '#1c2941'; ctx.fillStyle = '#8b9bb4';
+  ctx.font = '11px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for(let g=0; g<=5; g++){
+    const price = minP + (rng*g)/5;
+    const y = yOf(price);
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+    ctx.fillText(price.toFixed(2), W-pad.right+8, y);
+  }
+
+  const step = cw / candles.length;
+  const bw = Math.max(3, step*0.6);
+  const lastIdx = candles.length - 1;
+
+  candles.forEach((c,i) => {
+    const x = pad.left + step*i + step/2;
+    const bull = c.c >= c.o;
+    const col = bull ? '#22c55e' : '#ef4444';
+
+    // wick
+    ctx.strokeStyle = col; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, yOf(c.h)); ctx.lineTo(x, yOf(c.l)); ctx.stroke();
+
+    // body
+    const yO = yOf(c.o), yC = yOf(c.c);
+    const top = Math.min(yO,yC);
+    const bodyH = Math.max(1.5, Math.abs(yC-yO));
+    ctx.fillStyle = col;
+    ctx.fillRect(x-bw/2, top, bw, bodyH);
+
+    // highlight candle terakhir (forming / latest)
+    if(i === lastIdx){
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x-bw/2-2, top-2, bw+4, bodyH+4);
+    }
+  });
+
+  // garis harga live
+  if(state.tick && isFinite(state.tick.mid)){
+    const y = yOf(state.tick.mid);
+    if(y > pad.top && y < H-pad.bottom){
+      ctx.strokeStyle = '#3b82f6';
+      ctx.setLineDash([4,3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#3b82f6'; ctx.font = 'bold 10px system-ui';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText(state.tick.mid.toFixed(2), pad.left+2, y-1);
+    }
+  }
+}
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+function bindUI(){
+  const $ = id => document.getElementById(id);
+
+  $('sel-interval').addEventListener('change', e => {
+    state.interval = e.target.value;
+    if(state.running){ stop(); start(); }
+  });
+  $('sel-poll').addEventListener('change', e => {
+    state.pollMs = +e.target.value;
+    if(state.running){ stop(); start(); }
+  });
+  $('sel-limit').addEventListener('change', e => {
+    state.limit = +e.target.value;
+    if(state.running){ stop(); start(); }
+  });
+
+  $('btn-start').addEventListener('click', start);
+  $('btn-stop').addEventListener('click', stop);
+  $('btn-refresh').addEventListener('click', () => {
+    if(state.running){ stop(); start(); }
+    else { start(); }
+  });
+
+  window.addEventListener('resize', () => renderChart());
+}
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+bindUI();
+renderTopbar();
+// Auto-start
+start();
+</script>
+</body>
+</html>
