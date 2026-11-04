@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-auto-start-history-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-historical-scanner-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -246,7 +246,7 @@
       <div id="history-load-note" class="ai-lab-note">Muat sejarah tambahan untuk meluaskan sampel backtest. API mungkin mengehadkan jumlah yang dipulangkan.</div>
       <p class="ai-lab-disclaimer">Jumlah diminta bukan jaminan API akan memulangkan semuanya. Data digabungkan dengan candle sedia ada, disusun mengikut masa dan pendua dibuang. Liputan bergantung pada penyedia data.</p>
     </section>
-    <section class="ai-lab-card">
+    <section class="ai-lab-card signal-scanner-panel"><div class="ai-lab-head"><div><strong>GENJI HISTORICAL SIGNAL SCANNER</strong><small>Imbas semua candle sejarah timeframe dipilih dan terangkan sebab setup ditahan</small></div><span id="scan-status" class="ai-lab-pill">MENUNGGU</span></div><div class="scan-summary"><div><span>ENGULFING</span><b id="scan-total">0</b></div><div><span>CALON BUY</span><b id="scan-buy">0</b></div><div><span>CALON SELL</span><b id="scan-sell">0</b></div><div><span>WAIT / DITAHAN</span><b id="scan-wait">0</b></div></div><div class="scan-controls"><label>Keputusan<select id="scan-filter"><option value="all">Semua keputusan</option><option value="BUY">Calon BUY</option><option value="SELL">Calon SELL</option><option value="WAIT">WAIT / Ditahan</option></select></label><button id="btn-run-scan" class="green" type="button">Imbas semula sejarah</button></div><div id="scan-coverage" class="ai-lab-note">Scanner akan berjalan selepas sejarah candle dimuatkan.</div><div id="scan-results" class="scan-results"><p>Belum ada hasil imbasan.</p></div><p class="ai-lab-disclaimer">CALON BUY/SELL bermaksud engulfing + body + trend EMA timeframe yang sama + market regime lulus. Ia BUKAN signal akhir: scanner sejarah tidak mempunyai data H4/H1/M15/M5 yang diselaraskan pada setiap timestamp, jadi pengesahan MTF sejarah tidak boleh disahkan. Tiada arahan atau jaminan dagangan.</p></section>\n    <section class="ai-lab-card">
       <div class="ai-lab-head"><div><strong>4 · HISTORICAL BACKTEST</strong><small>Ujian rule pattern pada sejarah candle yang berjaya dimuatkan</small></div><span id="ai-backtest-status" class="ai-lab-pill">BELUM DIUJI</span></div>
       <div class="ai-backtest-controls"><label>Tempoh ujian<select id="ai-backtest-range"><option value="7">7 hari terakhir</option><option value="30" selected>30 hari terakhir</option><option value="all">Semua data tersedia</option></select></label><button id="btn-run-backtest" class="green" type="button">Jalankan backtest</button></div>
       <div class="ai-lab-stats">
@@ -291,6 +291,6 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-audit-cache-fix-20261104"></script>
+<script src="js/script.js?v=genji-historical-scanner-20261104"></script>
 </body>
 </html>
