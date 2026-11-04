@@ -527,3 +527,17 @@ footer{width:100%;overflow-wrap:anywhere}
 .history-loader-stats span{display:block;color:#9eae9b;font-size:8px;font-weight:800}
 .history-loader-stats b{display:block;color:#f3f8ef;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
 @media(max-width:600px){.history-loader-controls{display:grid;grid-template-columns:1fr}.history-loader-controls label{min-width:0}.history-loader-controls button{width:100%}.history-loader-stats b{font-size:11px}}
+
+/* GENJI BACKTEST PRO */
+.bt-side-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}
+.bt-side-grid>div{padding:10px;border:1px solid #29452d;border-radius:8px;background:#0b140d;min-width:0}
+.bt-side-grid strong{display:block;color:#f2cf36;font-size:10px}
+.bt-side-grid span{display:block;color:#dce8d8;font-size:9px;margin-top:5px;overflow-wrap:anywhere}
+.bt-results-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 7px}
+.bt-results-head strong{font-size:10px;color:#f2cf36}
+.bt-results-head button{font-size:9px;padding:7px 10px}
+.bt-results-list{max-height:360px;overflow:auto;border:1px solid #29452d;border-radius:8px;padding:0 9px;background:#0a110b}
+.bt-result-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #243a27}
+.bt-result-row:last-child{border-bottom:0}
+.bt-result-row strong{display:block;font-size:10px}
+.bt-result-row small{display:block;color:#9eae9b;font-size:8px;margin-top:4px}
