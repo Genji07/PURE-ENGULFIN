@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-backtest-pro-20261104b">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-pattern-learning-pro-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -166,6 +166,15 @@
   </div>
 
   <div class="analysis-pane" id="tab-ailab" role="tabpanel">
+    <section class="ai-lab-card pattern-learning-pro">
+      <div class="ai-lab-head"><div><strong>GENJI AI PATTERN LEARNING PRO</strong><small>Bandingkan setup terkini dengan corak engulfing yang pernah direkod</small></div><span id="plp-status" class="ai-lab-pill">MENUNGGU DATA</span></div>
+      <div class="plp-summary"><div><span>SETUP SERUPA</span><b id="plp-samples">0</b></div><div><span>WIN SIMULASI</span><b id="plp-wins">0</b></div><div><span>LOSS SIMULASI</span><b id="plp-losses">0</b></div><div><span>LAIN / BELUM SELESAI</span><b id="plp-other">0</b></div></div>
+      <div class="plp-decision"><span>KEPUTUSAN SEMASA</span><strong id="plp-signal">WAIT</strong><p id="plp-reason">Menunggu candle tertutup dan analisis pattern.</p></div>
+      <div class="plp-reasons" id="plp-reasons"><p>Reason BUY / SELL / WAIT akan dipaparkan di sini.</p></div>
+      <div class="plp-history-head">Rekod sejarah paling hampir</div><div id="plp-history" class="plp-history"><p>Belum ada sampel yang sepadan.</p></div>
+      <p class="ai-lab-disclaimer">Pembelajaran ini menggunakan padanan ciri dan rekod simulasi yang tersimpan pada browser ini. Minimum 3 sampel sepadan sebelum ringkasan sejarah dipaparkan. Ia bukan model AI terlatih, bukan ramalan dan bukan arahan dagangan.</p>
+    </section>
+
     <section class="ai-lab-card">
       <div class="ai-lab-head"><div><strong>GENJI AI LEARNING SYSTEM</strong><small>Pembelajaran pattern daripada candle tertutup dan keputusan simulasi</small></div><span id="ai-learning-status" class="ai-lab-pill">SEDIA</span></div>
       <div class="ai-lab-stats">
@@ -252,6 +261,6 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-backtest-pro-20261104b"></script>
+<script src="js/script.js?v=genji-ai-pattern-learning-pro-20261104"></script>
 </body>
 </html>
