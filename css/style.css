@@ -562,3 +562,24 @@ footer{width:100%;overflow-wrap:anywhere}
 .plp-history-row:last-child{border-bottom:0}
 .plp-history-row strong{display:block;font-size:9px}.plp-history-row small{display:block;color:#9eae9b;font-size:8px;margin-top:4px}
 @media(max-width:600px){.plp-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.plp-reason-row{grid-template-columns:16px 1fr auto;padding:8px 7px}}
+
+
+/* GENJI AI PATTERN REVIEW */
+.pr-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.pr-filters label{display:grid;gap:5px;color:#aebba9;font-size:9px;font-weight:800}
+.pr-filters select{width:100%;min-width:0;background:#0c160e;color:#f0f5ec;border:1px solid #36543a;border-radius:7px;padding:9px 5px;font-size:10px}
+.pr-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:10px 0}
+.pr-summary>div{padding:9px 7px;background:#0b140d;border:1px solid #29452d;border-radius:8px;min-width:0}
+.pr-summary span{display:block;color:#9eae9b;font-size:8px;font-weight:900}
+.pr-summary b{display:block;color:#f3f8ef;font-size:16px;margin-top:5px}
+.pr-actions{display:flex;justify-content:flex-end;margin:8px 0}
+.pr-list{display:grid;gap:8px;max-height:460px;overflow:auto}
+.pr-record{padding:10px;border:1px solid #29452d;border-radius:8px;background:#0a110b}
+.pr-record-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pr-record-head strong{display:block;font-size:10px}.pr-record-head small{display:block;color:#9eae9b;font-size:8px;margin-top:4px}
+.pr-candle-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:9px}
+.pr-candle-grid>div{padding:7px 5px;background:#111c13;border-radius:6px;min-width:0}
+.pr-candle-grid small{display:block;color:#93a58f;font-size:7px;font-weight:900}
+.pr-candle-grid b{display:block;color:#edf4e9;font-size:10px;margin-top:4px;overflow-wrap:anywhere}
+.pr-meta{font-size:8px;color:#aab8a6;margin-top:7px;line-height:1.4}
+@media(max-width:600px){.pr-filters{grid-template-columns:1fr 1fr}.pr-filters label:last-child{grid-column:1/-1}.pr-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
