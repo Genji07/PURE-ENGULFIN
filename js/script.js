@@ -812,7 +812,12 @@ function renderAnalysis() {
   const reasons=[];
   let signal='WAIT', detail='Menunggu pattern engulfing yang lengkap dan pengesahan trend H1/M15.';
   if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
-  else if (!pattern) reasons.push({ok:false,text:'Tiada engulfing pada candle tertutup terakhir. Sistem tidak mengeluarkan signal.'});
+  else if (!pattern) {
+    const lastText=latestEngulfing
+      ? ' Engulfing terakhir: '+latestEngulfing.name+' pada '+new Date(candles[latestEngulfing.index].t*1000).toLocaleString('ms-MY')+'.'
+      : ' Tiada engulfing sah ditemui dalam candle tertutup yang dimuatkan.';
+    reasons.push({ok:false,text:'Candle tertutup terkini tiada engulfing. '+closedEngulfings.length+' engulfing ditemui dalam '+candles.filter(c=>isClosedCandle(c,state.interval)).length+' candle tertutup.'+lastText});
+  }
   else {
     reasons.push({ok:true,text:pattern.name+' ('+pattern.type+') dikesan pada candle tertutup terakhir.'});
     reasons.push({ok:bodyStrong,text:'Kekuatan body '+(bodyRatio*100).toFixed(0)+'% daripada range candle ('+(bodyStrong?'memadai':'agak kecil')+').' });
