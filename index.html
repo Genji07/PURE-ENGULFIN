@@ -140,19 +140,19 @@
   <div class="analysis-pane" id="tab-memory" role="tabpanel">
     <div class="memory-head"><div><strong>GENJI PATTERN MEMORY</strong><small>Perbandingan setup semasa dengan rekod lama yang hampir serupa</small></div><span id="memory-count" class="memory-count">0 rekod</span></div>
     <div class="memory-summary">
-      <div><span>SETUP SERUPA</span><strong id="memory-matches">0</strong></div>
-      <div><span>WIN SIMULASI</span><strong id="memory-wins">0</strong></div>
-      <div><span>LOSS SIMULASI</span><strong id="memory-losses">0</strong></div>
-      <div><span>WIN RATE SAMPEL</span><strong id="memory-rate">—</strong></div>
-    </div>
-    <div id="memory-verdict" class="memory-verdict">Menunggu setup untuk dibandingkan.</div>
-    <div class="memory-summary">
       <div><span>ENGULFING SEJARAH</span><strong id="memory-pattern-total">0</strong></div>
       <div><span>PATTERN SERUPA ≥65%</span><strong id="memory-pattern-matches">0</strong></div>
     </div>
     <div id="memory-pattern-verdict" class="memory-verdict">Menunggu pattern sejarah.</div>
     <div class="performance-history-title">Perbandingan pattern sejarah</div>
     <div id="memory-pattern-history" class="performance-history"><p>Menunggu data candle.</p></div>
+    <div class="memory-summary">
+      <div><span>SETUP SERUPA</span><strong id="memory-matches">0</strong></div>
+      <div><span>WIN SIMULASI</span><strong id="memory-wins">0</strong></div>
+      <div><span>LOSS SIMULASI</span><strong id="memory-losses">0</strong></div>
+      <div><span>WIN RATE SAMPEL</span><strong id="memory-rate">—</strong></div>
+    </div>
+    <div id="memory-verdict" class="memory-verdict">Menunggu setup untuk dibandingkan.</div>
     <div class="performance-history-title">Setup lama yang paling hampir</div>
     <div id="memory-history" class="performance-history"><p>Belum ada rekod yang boleh dibandingkan.</p></div>
     <p class="memory-disclaimer">Memori simulasi menggunakan rekod setup pada peranti ini. Perbandingan pattern sejarah memadankan arah, jenis dan kekuatan body; persamaan bentuk bukan ramalan atau keputusan WIN/LOSS.</p>
@@ -321,7 +321,7 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-pattern-memory-20261105"></script>
+<script src="js/script.js?v=genji-pattern-memory-visible-20261105"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("GENJI PWA:", error)));
