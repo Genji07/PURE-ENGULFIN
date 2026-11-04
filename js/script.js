@@ -854,6 +854,34 @@ function renderAnalysis() {
   $('memory-pattern-history').innerHTML=patternMemoryRows.length
     ? patternMemoryRows.slice(0,5).map(x=>'<div class="performance-row"><div><strong>'+x.p.name+'</strong><small>'+new Date(x.c.t*1000).toLocaleString('ms-MY')+' · Body '+(x.ratio*100).toFixed(0)+'% · Persamaan '+x.similarity+'%</small></div><span class="perf-status PENDING">'+x.p.type+'</span></div>').join('')
     : '<p>Belum ada pattern sejarah yang cukup serupa.</p>';
+  // Historical outcome study: compare the close after 3/5/10 closed candles
+  // with the engulfing close, oriented by the pattern's own direction.
+  const outcomeHorizons=[3,5,10];
+  const outcomeRows=closedEngulfings.map(p=>{
+    const base=candles[p.index];
+    const side=p.name.includes('Bullish')?'bull':'bear';
+    const future=outcomeHorizons.map(horizon=>{
+      const later=candles.slice(p.index+1).filter(x=>isClosedCandle(x,state.interval));
+      if(later.length<horizon)return {horizon,ready:false,move:null,classification:'BELUM CUKUP DATA'};
+      const target=later[horizon-1];
+      const raw=side==='bull'?target.c-base.c:base.c-target.c;
+      const move=Number(raw.toFixed(2));
+      const classification=move>0.05?'POSITIF':move< -0.05?'NEGATIF':'MENDATAR';
+      return {horizon,ready:true,move,classification,time:target.t};
+    });
+    return {pattern:p,base,side,future};
+  });
+  const outcomeStats=outcomeHorizons.map(horizon=>{
+    const rows=outcomeRows.map(r=>r.future.find(x=>x.horizon===horizon)).filter(x=>x?.ready);
+    return {horizon,total:rows.length,positive:rows.filter(x=>x.classification==='POSITIF').length,negative:rows.filter(x=>x.classification==='NEGATIF').length,flat:rows.filter(x=>x.classification==='MENDATAR').length,average:rows.length?rows.reduce((sum,x)=>sum+x.move,0)/rows.length:null};
+  });
+  $('memory-outcome-stats').innerHTML=outcomeStats.map(x=>'<div class="memory-stat-row"><strong>+'+x.horizon+' candle</strong><span>'+x.total+' sampel</span><span class="perf-win">Positif '+x.positive+'</span><span class="perf-loss">Negatif '+x.negative+'</span><span>Mendatar '+x.flat+'</span><span>Purata arah '+(x.average===null?'—':(x.average>0?'+':'')+x.average.toFixed(2))+'</span></div>').join('');
+  $('memory-outcome-history').innerHTML=outcomeRows.length
+    ? outcomeRows.slice(-12).reverse().map(r=>{
+      const result=r.future.map(x=>'<span class="outcome-chip '+(x.classification==='POSITIF'?'positive':x.classification==='NEGATIF'?'negative':'neutral')+'">'+x.horizon+': '+(x.ready?x.classification+' ('+(x.move>0?'+':'')+x.move.toFixed(2)+')':'belum cukup')+'</span>').join(' ');
+      return '<div class="performance-row"><div><strong>'+r.pattern.name+'</strong><small>'+new Date(r.base.t*1000).toLocaleString('ms-MY')+' · Close '+r.base.c.toFixed(2)+'</small></div><div class="outcome-chip-list">'+result+'</div></div>';
+    }).join('')
+    : '<p>Belum ada engulfing tertutup untuk kajian outcome.</p>';
   const latestCandle=latestEngulfing?candles[latestEngulfing.index]:null;
   const liveReference=state.tick?.mid??candles.at(-1)?.c;
   const barsSinceEngulfing=latestEngulfing&&closedIndex!=null
