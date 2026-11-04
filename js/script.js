@@ -729,7 +729,147 @@ function renderAnalysis() {
   updatePerformanceOutcomes();
   renderPerformance();
   renderPatternMemory(memoryFeatures);
+  const qualityChecks=[
+    {label:'Engulfing candle tertutup',ok:!!(pattern&&pattern.name.includes('Engulfing')&&candle)},
+    {label:'Body strength sekurang-kurangnya 50%',ok:bodyStrong},
+    {label:'Trend H1 + M15 searah',ok:!!trendOK},
+    {label:'Market regime TRENDING',ok:!!marketRegime.allowSignal},
+    {label:'H4/H1/M15/M5 selari',ok:!!(mtf.aligned&&mtf.side===patternSide)}
+  ];
+  lastAiContext={signal,detail,score:confirmationScore,pattern,candle,regime:marketRegime,mtf,checks:qualityChecks};
+  renderAiLab(lastAiContext);
 }
+
+const AI_LEARNING_KEY='genji_ai_learning_v1';
+let aiLearningRecords=readAiLearning();
+let lastAiContext=null;
+function readAiLearning(){
+  try{const rows=JSON.parse(localStorage.getItem(AI_LEARNING_KEY)||'[]');return Array.isArray(rows)?rows:[];}
+  catch(_){return[];}
+}
+function saveAiLearning(){
+  aiLearningRecords=aiLearningRecords.slice(-3000);
+  try{localStorage.setItem(AI_LEARNING_KEY,JSON.stringify(aiLearningRecords));}
+  catch(error){console.warn('GENJI: AI learning tidak dapat disimpan',error);}
+}
+function evaluateHistoricalPattern(candles,index,side,interval){
+  const signal=candles[index];
+  const entry=signal.c;
+  const stop=side==='BUY'?signal.l:signal.h;
+  const risk=Math.abs(entry-stop);
+  if(!Number.isFinite(risk)||risk<=0)return{outcome:'INVALID',entry,stop,target:null,bars:0};
+  const target=side==='BUY'?entry+risk:entry-risk;
+  const future=candles.slice(index+1).filter(c=>isClosedCandle(c,interval)).slice(0,5);
+  let outcome='PENDING',bars=0,resolvedAt=null;
+  for(let i=0;i<future.length;i++){
+    const c=future[i];
+    const hitTarget=side==='BUY'?c.h>=target:c.l<=target;
+    const hitStop=side==='BUY'?c.l<=stop:c.h>=stop;
+    bars=i+1;
+    if(hitTarget&&hitStop){outcome='AMBIGUOUS';resolvedAt=c.t;break;}
+    if(hitTarget){outcome='WIN';resolvedAt=c.t;break;}
+    if(hitStop){outcome='LOSS';resolvedAt=c.t;break;}
+  }
+  if(outcome==='PENDING'&&future.length>=5){outcome='EXPIRED';resolvedAt=future[4].t;}
+  return{outcome,entry,stop,target,bars,resolvedAt};
+}
+function buildAiLearning(){
+  const current=[];
+  const candles=state.candles;
+  for(const pattern of state.patterns){
+    const i=pattern.index,c=candles[i];
+    if(!c||!isClosedCandle(c,state.interval))continue;
+    const side=pattern.name.includes('Bullish')?'BUY':pattern.name.includes('Bearish')?'SELL':null;
+    if(!side)continue;
+    const bodyRatio=Math.abs(c.c-c.o)/Math.max(c.h-c.l,1e-8);
+    const result=evaluateHistoricalPattern(candles,i,side,state.interval);
+    const id=[state.interval,c.t,pattern.name].join('_');
+    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,bodyRatio:Number(bodyRatio.toFixed(3)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
+  }
+  const other=aiLearningRecords.filter(r=>r.interval!==state.interval);
+  aiLearningRecords=other.concat(current).slice(-3000);
+  saveAiLearning();
+  return current;
+}
+function renderAiLab(context){
+  if(!document.getElementById('tab-ailab'))return;
+  const current=state.candles.filter(c=>isClosedCandle(c,state.interval));
+  const learning=buildAiLearning();
+  const resolved=aiLearningRecords.filter(r=>r.interval===state.interval&&['WIN','LOSS'].includes(r.outcome));
+  const wins=resolved.filter(r=>r.outcome==='WIN').length;
+  const losses=resolved.filter(r=>r.outcome==='LOSS').length;
+  const latest=learning.slice(-1)[0];
+  const matches=latest?resolved.filter(r=>r.side===latest.side&&r.pattern===latest.pattern&&Math.abs(r.bodyRatio-latest.bodyRatio)<=0.15):[];
+  $('ai-samples').textContent=String(resolved.length);
+  $('ai-wins').textContent=String(wins);
+  $('ai-losses').textContent=String(losses);
+  $('ai-matches').textContent=String(matches.length);
+  $('ai-learning-status').textContent=resolved.length>=10?'BELAJAR · '+resolved.length:'KUMPUL DATA';
+  $('ai-learning-note').textContent=latest?'Pattern terakhir: '+latest.pattern+' · '+latest.side+' · '+latest.outcome+'. '+matches.length+' rekod hampir serupa untuk perbandingan.':'Belum ada engulfing tertutup untuk dipelajari.';
+  const recent=learning.slice().reverse().slice(0,6);
+  $('ai-learning-history').innerHTML=recent.length?recent.map(r=>'<div class="ai-learning-row"><div><strong>'+r.pattern+' · '+r.side+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Body '+(r.bodyRatio*100).toFixed(0)+'%</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Belum ada pattern yang boleh direkodkan.</p>';
+
+  const checks=context?.checks||[];
+  $('ai-quality-state').textContent=context?.signal||'WAIT';
+  $('ai-quality-checks').innerHTML=checks.length?checks.map(c=>'<div class="ai-check '+(c.ok?'pass':'fail')+'"><b>'+(c.ok?'✓':'!')+'</b><span>'+c.label+'</span><small>'+(c.ok?'LULUS':'BELUM LULUS')+'</small></div>').join(''):'<p>Menunggu data analisis.</p>';
+
+  const p=context?.pattern,c=context?.candle;
+  if(p&&c&&p.name.includes('Engulfing')){
+    const side=p.name.includes('Bullish')?'BUY':'SELL';
+    const stop=side==='BUY'?c.l:c.h;
+    const risk=Math.abs(c.c-stop);
+    const one=side==='BUY'?c.c+risk:c.c-risk;
+    const two=side==='BUY'?c.c+risk*2:c.c-risk*2;
+    const nearest=getNearestZones(c.c);
+    const zone=side==='BUY'?nearest.support:nearest.resistance;
+    $('ai-entry-side').textContent=side+' · SIMULASI';
+    $('ai-entry-price').textContent=c.c.toFixed(2);
+    $('ai-entry-stop').textContent=stop.toFixed(2);
+    $('ai-entry-risk').textContent=risk.toFixed(2);
+    $('ai-entry-1r').textContent=one.toFixed(2);
+    $('ai-entry-2r').textContent=two.toFixed(2);
+    $('ai-entry-retest').textContent=zone?zone.low.toFixed(2)+'–'+zone.high.toFixed(2):'Tiada zon';
+    $('ai-entry-reason').textContent='Paras dikira daripada close dan high/low candle pattern tertutup. Ia hanya contoh pengiraan sejarah; tunggu data dan semak risiko secara berasingan.';
+  }else{
+    $('ai-entry-side').textContent='TIADA SETUP';
+    ['ai-entry-price','ai-entry-stop','ai-entry-risk','ai-entry-1r','ai-entry-2r','ai-entry-retest'].forEach(id=>$(id).textContent='—');
+    $('ai-entry-reason').textContent='Tiada engulfing tertutup terakhir untuk pengiraan simulasi.';
+  }
+  $('ai-dashboard-signal').textContent=context?.signal||'WAIT';
+  $('ai-dash-regime').textContent=context?.regime?.label||'—';
+  $('ai-dash-mtf').textContent=context?.mtf?.status||'—';
+  $('ai-dash-score').textContent=Number.isFinite(context?.score)?context.score+'/100':'—';
+  $('ai-dash-bars').textContent=current.length+' candle tertutup';
+  $('ai-dashboard-reason').textContent=context?.detail||'Menunggu analisis terkini.';
+}
+function runAiBacktest(){
+  const candles=state.candles.filter(c=>isClosedCandle(c,state.interval));
+  const range=$('ai-backtest-range').value;
+  const cutoff=range==='all'?0:Date.now()/1000-Number(range)*86400;
+  const patterns=state.patterns.filter(p=>{
+    const c=state.candles[p.index];
+    return c&&c.t>=cutoff&&isClosedCandle(c,state.interval)&&p.name.includes('Engulfing');
+  });
+  const results=[];
+  for(const p of patterns){
+    const side=p.name.includes('Bullish')?'BUY':'SELL';
+    const result=evaluateHistoricalPattern(state.candles,p.index,side,state.interval);
+    if(['WIN','LOSS'].includes(result.outcome))results.push({side,outcome:result.outcome,time:state.candles[p.index].t});
+  }
+  const wins=results.filter(r=>r.outcome==='WIN').length;
+  const losses=results.filter(r=>r.outcome==='LOSS').length;
+  const total=results.length;
+  $('bt-total').textContent=String(total);
+  $('bt-wins').textContent=String(wins);
+  $('bt-losses').textContent=String(losses);
+  $('bt-rate').textContent=total?(wins/total*100).toFixed(1)+'%':'—';
+  $('ai-backtest-status').textContent=total?'SELESAI':'DATA TERHAD';
+  const first=candles[0]?.t,last=candles[candles.length-1]?.t;
+  const days=first&&last?(last-first)/86400:0;
+  const requested=range==='all'?'semua data tersedia':range+' hari terakhir';
+  $('ai-backtest-note').textContent='Ujian '+requested+': '+patterns.length+' pattern ditemui, '+total+' keputusan selesai ('+wins+' WIN / '+losses+' LOSS). Liputan data candle: '+(days>0?days.toFixed(1)+' hari':'tidak diketahui')+'. '+(range!=='all'&&days<Number(range)?'AMARAN: data tidak meliputi keseluruhan tempoh yang dipilih; keputusan hanya berdasarkan candle yang dimuatkan.':'Keputusan hanya berdasarkan data yang dimuatkan.');
+}
+
 function drawTag(ctx, x, y, text, background, foreground) {
   ctx.font = 'bold 10px system-ui';
   const width = ctx.measureText(text).width + 12;
@@ -924,6 +1064,7 @@ function bind() {
     $('btn-alert-notify').setAttribute('aria-pressed',String(alertState.notifyEnabled));
   };
 
+  $('btn-run-backtest').onclick=runAiBacktest;
   $('btn-clear-performance').onclick = () => {
     if (!confirm('Padam semua rekod performance yang disimpan pada peranti ini?')) return;
     performanceRecords = [];
