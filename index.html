@@ -11,6 +11,18 @@
   <div class="title"><h1>XAU/USD · Pro Chart + Pattern Detection</h1><p class="sub"><span id="conn-dot" class="live-dot"></span><span id="conn-text">Sedia</span></p></div>
   <div class="price-box"><span class="sym">XAU/USD</span><span class="px" id="live-price">—</span><span class="chg muted" id="live-change">—</span></div>
 </div>
+
+<section class="api-health-card" aria-label="GENJI API Health Monitor">
+  <div class="api-health-head"><div><strong>GENJI API HEALTH MONITOR</strong><small>Pemeriksaan sambungan harga, candle dan multi-timeframe</small></div><span id="api-health-status" class="api-health-pill">MENUNGGU</span></div>
+  <div class="api-health-grid">
+    <div><span>HARGA XAUUSD</span><b id="api-health-tick">MENUNGGU</b><small id="api-health-tick-time">Belum ada kemas kini</small></div>
+    <div><span>CANDLE <i id="api-health-tf-label">5m</i></span><b id="api-health-candles">MENUNGGU</b><small id="api-health-candle-detail">Belum ada data</small></div>
+    <div><span>MTF H4 / H1 / M15 / M5</span><b id="api-health-mtf">MENUNGGU</b><small id="api-health-mtf-detail">Menunggu empat timeframe</small></div>
+    <div><span>LATENCY TERAKHIR</span><b id="api-health-latency">—</b><small id="api-health-latency-detail">Tick / Candle / MTF</small></div>
+  </div>
+  <div class="api-health-foot"><span id="api-health-last-check">Pemeriksaan belum bermula.</span><span id="api-health-errors">Tiada ralat direkod.</span></div>
+  <p class="api-health-disclaimer">Status berdasarkan respons API yang diterima oleh browser ini. Cache lama tidak dikira sebagai data live; monitor hanya berfungsi semasa halaman dibuka.</p>
+</section>
 <section class="config">
   <label>Timeframe<select id="sel-interval"><option value="1m">1m</option><option value="5m" selected>5m</option><option value="15m">15m</option><option value="30m">30m</option><option value="1h">1H</option><option value="4h">4H</option><option value="1d">1D</option></select></label>
   <label>Definisi Engulfing<select id="sel-eng-def"><option value="both" selected>Kedua-dua mod</option><option value="body">Body sahaja</option><option value="full">Badan + Sumbu</option></select></label>
