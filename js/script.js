@@ -839,6 +839,29 @@ function renderPatternLearningPro(context){
   $('plp-history').innerHTML=matches.length?matches.slice().sort((a,b)=>b.time-a.time).slice(0,8).map(r=>'<div class="plp-history-row"><div><strong>'+r.pattern+' · '+r.side+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Body '+(r.bodyRatio*100).toFixed(0)+'% · '+r.interval+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Tiada rekod sepadan. Muat lebih banyak candle sejarah untuk menambah sampel.</p>';
   if(matches.length>0&&matches.length<3)$('plp-reason').textContent+=' Sampel belum cukup untuk ringkasan (perlukan sekurang-kurangnya 3).';
   if(matches.length>=3)$('plp-reason').textContent+=' Ringkasan sejarah: '+wins+' WIN, '+losses+' LOSS dan '+other+' keputusan lain/belum selesai. Ini rekod lampau, bukan ramalan.';
+  renderAiAutoCompare({pattern,candle,side,bodyRatio,signal});
+}
+function renderAiAutoCompare(current){
+  if(!$('ac-results'))return;
+  const {pattern,candle,side,bodyRatio}=current;
+  if(!pattern||!candle||!side){
+    $('ac-best').textContent='—';$('ac-body-diff').textContent='—';$('ac-trend').textContent='—';
+    $('ac-results').innerHTML='<p>Tiada setup engulfing BUY/SELL yang boleh dibandingkan sekarang.</p>';return;
+  }
+  const trendH1=state.trendH1?.direction||'unknown',trendM15=state.trendM15?.direction||'unknown';
+  const candidates=aiLearningRecords.filter(r=>r.interval===state.interval&&r.id!==[state.interval,candle.t,pattern.name].join('_')&&r.side===side&&r.pattern===pattern.name&&Number.isFinite(Number(r.bodyRatio))&&Number.isFinite(Number(r.range))&&Number(r.range)>0)
+    .map(r=>{
+      const bodyDiff=Math.abs(Number(r.bodyRatio)-bodyRatio);
+      const rangeDiff=Math.abs(Math.log(Number(r.range)/Math.max(candle.h-candle.l,1e-8)));
+      const trendMatches=(r.h1===trendH1?1:0)+(r.m15===trendM15?1:0);
+      const score=Math.max(0,Math.min(100,100-(bodyDiff*180)-(rangeDiff*12)+trendMatches*5));
+      return{r,bodyDiff,trendMatches,score};
+    }).sort((a,b)=>b.score-a.score||b.r.time-a.r.time);
+  const best=candidates[0];
+  $('ac-best').textContent=best?best.score.toFixed(0)+'%':'—';
+  $('ac-body-diff').textContent=best?(best.bodyDiff*100).toFixed(1)+'%':'—';
+  $('ac-trend').textContent=best?best.trendMatches+'/2':'—';
+  $('ac-results').innerHTML=candidates.length?candidates.slice(0,5).map(({r,bodyDiff,trendMatches,score})=>'<div class="ac-row"><div><strong>'+r.pattern+' · '+r.side+' · '+score.toFixed(0)+'% serupa</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Body '+(Number(r.bodyRatio)*100).toFixed(0)+'% · beza '+(bodyDiff*100).toFixed(1)+'% · trend '+trendMatches+'/2</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Belum ada rekod sejarah dengan timeframe, corak dan arah yang sama. Tambah data sejarah untuk membina perbandingan.</p>';
 }
 
 function renderAiLab(context){
