@@ -961,6 +961,7 @@ function renderPatternReview(){
 let activePatternReplayId=null;
 let activeReplayContext=[];
 let activeReplayStep=0;
+let replayTimer=null;
 function replayContextFor(record){
   if(Array.isArray(record.replayContext)&&record.replayContext.length){
     const saved=record.replayContext.filter(c=>c&&[c.t,c.o,c.h,c.l,c.c].every(v=>Number.isFinite(Number(v)))&&Number(c.h)>Number(c.l)).map(c=>({...c,isSetup:!!c.isSetup}));
@@ -978,6 +979,7 @@ function openPatternReplay(id){
   if(!record)return;
   activePatternReplayId=id;
   activeReplayContext=replayContextFor(record);
+  stopAutoReplay();
   activeReplayStep=0;
   const panel=$('pr-replay');
   panel.hidden=false;
@@ -1038,7 +1040,26 @@ function stepPatternReplay(delta){
   const current=activeReplayContext[activeReplayStep];
   if(current){const fmt=v=>Number(v).toFixed(2);$('pr-replay-values').innerHTML=[['OPEN',current.o],['HIGH',current.h],['LOW',current.l],['CLOSE',current.c]].map(([k,v])=>'<div><small>'+k+'</small><b>'+fmt(v)+'</b></div>').join('');}
 }
+function stopAutoReplay(){
+  if(replayTimer!==null){clearInterval(replayTimer);replayTimer=null;}
+  const button=$('btn-replay-auto');
+  if(button){button.textContent='▶ Auto replay';button.classList.remove('replay-playing');}
+}
+function toggleAutoReplay(){
+  if(replayTimer!==null){stopAutoReplay();return;}
+  if(!activePatternReplayId||activeReplayContext.length<2)return;
+  if(activeReplayStep>=activeReplayContext.length-1){activeReplayStep=0;stepPatternReplay(0);}
+  const speed=Number($('replay-speed').value)||1000;
+  const button=$('btn-replay-auto');
+  button.textContent='Ⅱ Hentikan';button.classList.add('replay-playing');
+  replayTimer=setInterval(()=>{
+    if(activeReplayStep>=activeReplayContext.length-1){stopAutoReplay();return;}
+    stepPatternReplay(1);
+    if(activeReplayStep>=activeReplayContext.length-1)stopAutoReplay();
+  },speed);
+}
 function closePatternReplay(){
+  stopAutoReplay();
   $('pr-replay').hidden=true;
   activePatternReplayId=null;
   activeReplayContext=[];
@@ -1323,6 +1344,8 @@ function bind() {
   $('btn-close-replay').onclick=closePatternReplay;
   $('btn-replay-prev').onclick=()=>stepPatternReplay(-1);
   $('btn-replay-next').onclick=()=>stepPatternReplay(1);
+  $('btn-replay-auto').onclick=toggleAutoReplay;
+  $('replay-speed').onchange=()=>{if(replayTimer!==null){stopAutoReplay();toggleAutoReplay();}};
   renderPatternReview();
   $('btn-load-history').onclick=loadHistoricalCandles;
   renderHistoryLoader();
