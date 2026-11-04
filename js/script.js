@@ -3,7 +3,7 @@
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
   candles: [], tick: null, running: false, timer: null,
-  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendError: null
+  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null
 };
 const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
 const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
@@ -406,13 +406,19 @@ function getTrend(bars, interval) {
 }
 async function fetchTrend() {
   try {
-    const [h1,m15] = await Promise.all([fetchTrendTimeframe('1h'),fetchTrendTimeframe('15m')]);
-    state.trendH1 = getTrend(h1,'1h');
-    state.trendM15 = getTrend(m15,'15m');
-    state.trendError = null;
-  } catch (error) {
-    state.trendH1 = state.trendM15 = {label:'DATA TAK ADA',direction:'unknown'};
-    state.trendError = error.message;
+    const [h4,h1,m15,m5] = await Promise.all([
+      fetchTrendTimeframe('4h'),fetchTrendTimeframe('1h'),
+      fetchTrendTimeframe('15m'),fetchTrendTimeframe('5m')
+    ]);
+    state.trendH4=getTrend(h4,'4h');
+    state.trendH1=getTrend(h1,'1h');
+    state.trendM15=getTrend(m15,'15m');
+    state.trendM5=getTrend(m5,'5m');
+    state.trendError=null;
+  } catch(error) {
+    const missing={label:'DATA TAK ADA',direction:'unknown'};
+    state.trendH4=state.trendH1=state.trendM15=state.trendM5=missing;
+    state.trendError=error.message;
   }
 }
 async function fetchTick() {
@@ -622,12 +628,29 @@ function renderMarketRegime(regime) {
   $('regime-reason').textContent=regime.reason;
   $('regime-filter-status').textContent=regime.label==='TRENDING'?'LULUS · TRENDING SAHAJA':'BLOCK · WAIT';
 }
+function renderMtfAlignment() {
+  const rows=[['H4',state.trendH4],['H1',state.trendH1],['M15',state.trendM15],['M5',state.trendM5]];
+  rows.forEach(([tf,value])=>{
+    const el=$('mtf-'+tf.toLowerCase());
+    el.textContent=value?.label||'MENUNGGU';
+    el.className=value?.direction==='bull'?'bull':value?.direction==='bear'?'bear':'unknown';
+  });
+  const known=rows.every(([,value])=>value&&['bull','bear'].includes(value.direction));
+  const same=known&&rows.every(([,value])=>value.direction===rows[0][1].direction);
+  const status=!known?'DATA TAK CUKUP':same?'ALL ALIGN':'CONFLICT';
+  $('mtf-status').textContent=status;
+  $('mtf-status').className='mtf-pill '+(same?'aligned':known?'conflict':'unknown');
+  $('mtf-reason').textContent=!known?'Sekurang-kurangnya satu timeframe belum mempunyai 25 candle tertutup yang sah.':same?'H4, H1, M15 dan M5 semuanya '+(rows[0][1].direction==='bull'?'BULLISH':'BEARISH')+'. Arah timeframe selari.':'Arah timeframe bercanggah: '+rows.map(([tf,value])=>tf+' '+value.label).join(' · ')+'.';
+  $('mtf-filter-status').textContent=same?'LULUS · '+(rows[0][1].direction==='bull'?'BUY BIAS':'SELL BIAS'):'BLOCK · WAIT';
+  return {aligned:same,side:same?rows[0][1].direction:null,status};
+}
 function renderAnalysis() {
   const candles = state.candles;
   const closedIndex = candles.map((c,i)=>isClosedCandle(c,state.interval)?i:-1).filter(i=>i>=0).pop();
   const candle = closedIndex == null ? null : candles[closedIndex];
   const pattern = closedIndex == null ? null : state.patterns.find(p=>p.index===closedIndex);
   const h1 = state.trendH1, m15 = state.trendM15;
+  const mtf=renderMtfAlignment();
   const patternSide = pattern?.name.includes('Bullish') ? 'bull' : pattern?.name.includes('Bearish') ? 'bear' : null;
   const body = candle ? Math.abs(candle.c-candle.o) : 0;
   const range = candle ? Math.max(candle.h-candle.l,1e-8) : 1;
@@ -667,11 +690,12 @@ function renderAnalysis() {
     if (patternSide==='bull') reasons.push({ok:!!supportRejection,text:zoneContext||'Tiada rejection support yang jelas; semak kedudukan zon support.'});
     if (patternSide==='bear') reasons.push({ok:!!resistanceRejection,text:zoneContext||'Tiada rejection resistance yang jelas; semak kedudukan zon resistance.'});
     reasons.push({ok:marketRegime.allowSignal,text:'Market regime: '+marketRegime.label+' · '+marketRegime.reason});
-    if (trendOK && bodyStrong && marketRegime.allowSignal) {
+    reasons.push({ok:mtf.aligned&&mtf.side===patternSide,text:'Multi-timeframe: '+mtf.status+(mtf.side?' · '+mtf.side.toUpperCase():'')+'.'});
+    if (trendOK && bodyStrong && marketRegime.allowSignal && mtf.aligned && mtf.side===patternSide) {
       signal=patternSide==='bull'?'BUY':'SELL';
       detail='Engulfing, candle tertutup, body dan trend H1/M15 searah. Signal teknikal disahkan.';
     } else {
-      detail=!marketRegime.allowSignal?'Filter market regime: '+marketRegime.label+'. Signal ditahan; kekalkan WAIT.':'Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.';
+      detail=!marketRegime.allowSignal?'Filter market regime: '+marketRegime.label+'. Signal ditahan; kekalkan WAIT.':(!mtf.aligned||mtf.side!==patternSide?'MTF '+mtf.status+' atau tidak searah dengan pattern. Signal ditahan; kekalkan WAIT.':'Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.');
     }
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
