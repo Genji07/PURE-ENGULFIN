@@ -3,7 +3,7 @@
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'body',
   candles: [], tick: null, running: false, timer: null,
-  candleError: null, tickError: null, patterns: []
+  candleError: null, tickError: null, patterns: [], trendH1: null, trendM15: null, trendError: null
 };
 const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
 const chart = {
@@ -44,7 +44,7 @@ async function fetchCandles() {
     l: Number(bar.low ?? bar.l),
     c: Number(bar.close ?? bar.c),
     v: Number(bar.tickVolume ?? bar.volume ?? 0),
-    isOpen: Boolean(bar.isOpen)
+    isOpen: bar.isOpen === true, isClosed: bar.isClosed === true, hasCloseFlag: typeof bar.isOpen === 'boolean' || typeof bar.isClosed === 'boolean'
   })).filter(c =>
     Number.isFinite(c.t) &&
     [c.o, c.h, c.l, c.c].every(Number.isFinite) &&
@@ -60,6 +60,54 @@ async function fetchCandles() {
   if (!unique.length) throw new Error('API tiada candle sah');
   state.candles = unique;
   detectPatterns();
+}
+async function fetchTrendTimeframe(interval) {
+  const url = 'https://biquote.io/api/XAUUSD/ohlc?interval=' + encodeURIComponent(interval) + '&limit=80';
+  const data = await getJson(url);
+  const bars = Array.isArray(data) ? data : data.bars;
+  if (!Array.isArray(bars)) throw new Error('Format trend ' + interval + ' tidak dikenali');
+  return bars.map(b => ({
+    t: unixTime(b.openTime ?? b.time ?? b.t ?? b.timestamp),
+    c: Number(b.close ?? b.c),
+    isOpen: b.isOpen === true,
+    isClosed: b.isClosed === true,
+    hasCloseFlag: typeof b.isOpen === 'boolean' || typeof b.isClosed === 'boolean'
+  })).filter(x => Number.isFinite(x.t) && Number.isFinite(x.c)).sort((a,b)=>a.t-b.t);
+}
+function candleDurationMs(interval) {
+  const map = {'1m':60000,'5m':300000,'15m':900000,'30m':1800000,'1h':3600000,'4h':14400000,'1d':86400000};
+  return map[interval] || 300000;
+}
+function isClosedCandle(candle, interval) {
+  if (candle.hasCloseFlag) return candle.isClosed || !candle.isOpen;
+  return candle.t * 1000 + candleDurationMs(interval) <= Date.now();
+}
+function emaLast(values, period) {
+  if (values.length < period) return null;
+  const k = 2 / (period + 1);
+  let ema = values.slice(0, period).reduce((a,b)=>a+b,0) / period;
+  for (let i=period;i<values.length;i++) ema = values[i] * k + ema * (1-k);
+  return ema;
+}
+function getTrend(bars, interval) {
+  const closes = bars.filter(b => isClosedCandle(b, interval)).map(b => b.c);
+  if (closes.length < 25) return {label:'DATA TAK CUKUP', direction:'unknown'};
+  const fast = emaLast(closes, 9), slow = emaLast(closes, 21);
+  if (fast === null || slow === null) return {label:'DATA TAK CUKUP', direction:'unknown'};
+  if (fast > slow) return {label:'BULLISH', direction:'bull'};
+  if (fast < slow) return {label:'BEARISH', direction:'bear'};
+  return {label:'NEUTRAL', direction:'neutral'};
+}
+async function fetchTrend() {
+  try {
+    const [h1,m15] = await Promise.all([fetchTrendTimeframe('1h'),fetchTrendTimeframe('15m')]);
+    state.trendH1 = getTrend(h1,'1h');
+    state.trendM15 = getTrend(m15,'15m');
+    state.trendError = null;
+  } catch (error) {
+    state.trendH1 = state.trendM15 = {label:'DATA TAK ADA',direction:'unknown'};
+    state.trendError = error.message;
+  }
 }
 async function fetchTick() {
   const data = await getJson('https://biquote.io/api/XAUUSD');
@@ -107,7 +155,7 @@ function detectPatterns() {
 }
 async function tickOnce() {
   if (!state.running) return;
-  const results = await Promise.allSettled([fetchCandles(), fetchTick()]);
+  const results = await Promise.allSettled([fetchCandles(), fetchTick(), fetchTrend()]);
   state.candleError = results[0].status === 'rejected' ? results[0].reason.message : null;
   state.tickError = results[1].status === 'rejected' ? results[1].reason.message : null;
   renderAll();
@@ -171,6 +219,46 @@ function updateHud() {
     state.patterns[state.patterns.length - 1];
   $('hud-eng').textContent = pattern
     ? 'Corak: ' + pattern.name : 'Corak: belum dikesan';
+  renderAnalysis();
+}
+function renderAnalysis() {
+  const candles = state.candles;
+  const closedIndex = candles.map((c,i)=>isClosedCandle(c,state.interval)?i:-1).filter(i=>i>=0).pop();
+  const candle = closedIndex == null ? null : candles[closedIndex];
+  const pattern = closedIndex == null ? null : state.patterns.find(p=>p.index===closedIndex);
+  const h1 = state.trendH1, m15 = state.trendM15;
+  const patternSide = pattern?.name.includes('Bullish') ? 'bull' : pattern?.name.includes('Bearish') ? 'bear' : null;
+  const body = candle ? Math.abs(candle.c-candle.o) : 0;
+  const range = candle ? Math.max(candle.h-candle.l,1e-8) : 1;
+  const bodyRatio = body/range;
+  const bodyStrong = bodyRatio >= 0.5;
+  const trendOK = patternSide && h1 && m15 && h1.direction===patternSide && m15.direction===patternSide;
+  const reasons=[];
+  let signal='WAIT', detail='Menunggu pattern engulfing yang lengkap dan pengesahan trend H1/M15.';
+  if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
+  else if (!pattern) reasons.push({ok:false,text:'Tiada engulfing pada candle tertutup terakhir. Sistem tidak mengeluarkan signal.'});
+  else {
+    reasons.push({ok:true,text:pattern.name+' dikesan pada candle tertutup terakhir.'});
+    reasons.push({ok:bodyStrong,text:'Kekuatan body '+(bodyRatio*100).toFixed(0)+'% daripada range candle ('+(bodyStrong?'memadai':'agak kecil')+').' });
+    reasons.push({ok:!!h1 && h1.direction===patternSide,text:'Trend H1: '+(h1?.label||'BELUM ADA')+'.'});
+    reasons.push({ok:!!m15 && m15.direction===patternSide,text:'Trend M15: '+(m15?.label||'BELUM ADA')+'.'});
+    if (trendOK && bodyStrong) {
+      signal=patternSide==='bull'?'BUY':'SELL';
+      detail='Engulfing, candle tertutup, body dan trend H1/M15 searah. Signal teknikal disahkan.';
+    } else {
+      detail='Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.';
+    }
+  }
+  $('a-pattern').textContent=pattern?pattern.name:'TIADA';
+  $('a-type').textContent=state.engDef==='body'?'PURE BODY':'FULL CANDLE';
+  $('a-h1').textContent=h1?.label||'MENUNGGU';
+  $('a-m15').textContent=m15?.label||'MENUNGGU';
+  $('a-candle').textContent=candle?'CLOSED':'MENUNGGU';
+  $('a-body').textContent=candle?(bodyRatio*100).toFixed(0)+'%':'—';
+  $('a-reason').innerHTML=reasons.map(r=>'<div class="reason-item '+(r.ok?'pass':'fail')+'">'+(r.ok?'✓ ':'! ')+r.text+'</div>').join('');
+  const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
+  $('a-signal-detail').textContent=detail;
+  $('a-signal-tf').textContent=state.interval;
 }
 function drawTag(ctx, x, y, text, background, foreground) {
   ctx.font = 'bold 10px system-ui';
@@ -326,6 +414,10 @@ function pointerPosition(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function bind() {
+  document.querySelectorAll('.analysis-tab').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.analysis-tab').forEach(item => { item.classList.toggle('active',item===tab); item.setAttribute('aria-selected',item===tab?'true':'false'); });
+    document.querySelectorAll('.analysis-pane').forEach(pane => pane.classList.toggle('active',pane.id==='tab-'+tab.dataset.tab));
+  }));
   $('sel-interval').onchange = event => {
     state.interval = event.target.value;
     if (state.running) { stop(); start(); }
