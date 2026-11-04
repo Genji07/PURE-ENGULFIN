@@ -1350,6 +1350,26 @@ function readHistoricalOutcomeBackupRows(){
     return Array.isArray(rows)?rows.filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string'&&r.horizons&&typeof r.horizons==='object'):[];
   }catch(_){return [];}
 }
+const backupReminderKey='genjiBackupReminderLastExportV1';
+const backupReminderInterval=7*24*60*60*1000;
+function renderBackupReminder(){
+  const node=$('backup-reminder');
+  if(!node)return;
+  let last=0;
+  try{last=Number(localStorage.getItem(backupReminderKey)||0);}catch(_){}
+  if(!last){
+    node.textContent='Peringatan backup: belum ada tarikh eksport direkodkan. Buat backup JSON sekarang dan ulang setiap 7 hari.';
+    return;
+  }
+  const age=Date.now()-last;
+  const date=new Date(last).toLocaleString('ms-MY');
+  if(age>=backupReminderInterval){
+    node.textContent='⚠️ Backup sudah sampai masa. Eksport terakhir diminta pada '+date+'. Tekan Muat turun backup JSON dan simpan fail.';
+  }else{
+    const days=Math.max(1,Math.ceil((backupReminderInterval-age)/86400000));
+    node.textContent='Backup terakhir diminta pada '+date+'. Peringatan seterusnya dalam kira-kira '+days+' hari. Pastikan fail berada dalam folder simpanan.';
+  }
+}
 function renderBackupStats(){
   if(!$('backup-ai-count'))return;
   $('backup-ai-count').textContent=String(aiLearningRecords.length);
@@ -1376,7 +1396,9 @@ function downloadGenjiBackup(){
   link.download='genji-backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
   document.body.appendChild(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-  $('backup-status').textContent='Backup berjaya dijana. Simpan fail JSON di tempat yang selamat.';
+  try{localStorage.setItem(backupReminderKey,String(Date.now()));}catch(_){}
+  renderBackupReminder();
+  $('backup-status').textContent='Fail backup telah dijana. Semak folder Downloads dan pastikan fail JSON benar-benar tersimpan.';
 }
 function mergeById(existing,incoming,keyFn,limit){
   const map=new Map();
@@ -1647,6 +1669,7 @@ function bind() {
   $('btn-import-backup').onclick=()=>$('backup-file-input').click();
   $('backup-file-input').onchange=event=>importGenjiBackup(event.target.files?.[0]);
   renderBackupStats();
+  renderBackupReminder();
   $('btn-clear-performance').onclick = () => {
     if (!confirm('Padam semua rekod performance yang disimpan pada peranti ini?')) return;
     performanceRecords = [];
