@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-replay-timeline-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-replay-event-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -231,7 +231,7 @@
         <canvas id="pr-replay-canvas" width="640" height="220" aria-label="Paparan candle sejarah pilihan"></canvas>\n        <div class="pr-replay-controls"><button id="btn-replay-prev" type="button" class="ghost" disabled>← Candle sebelum</button><strong id="pr-replay-step">Candle 1 / 1</strong><button id="btn-replay-next" type="button" class="green">Candle seterusnya →</button></div>
         <div class="pr-replay-timeline"><label for="replay-scrubber">Garis masa replay</label><input id="replay-scrubber" type="range" min="0" max="0" value="0" step="1" disabled><small id="pr-replay-time">Masa candle tidak tersedia</small></div>
         <div class="pr-replay-auto"><button id="btn-replay-auto" type="button" class="green">▶ Auto replay</button><label>Kelajuan<select id="replay-speed"><option value="1500">Perlahan · 1.5s</option><option value="1000" selected>Normal · 1s</option><option value="500">Pantas · 0.5s</option></select></label></div>
-        <div id="pr-replay-values" class="pr-candle-grid"></div>
+        <div id="pr-replay-event" class="pr-replay-event" data-kind="pending">Event: menunggu replay</div>\n        <div id="pr-replay-values" class="pr-candle-grid"></div>
         <div id="pr-replay-meta" class="pr-meta"></div>
         <p class="ai-lab-disclaimer">Gunakan butang Candle sebelum/seterusnya untuk melihat sejarah satu demi satu. Konteks sehingga 8 candle sebelum dan 8 selepas setup disimpan bersama rekod AI baharu. Garis ENTRY, STOP dan TARGET menunjukkan paras simulasi tersimpan; candle setup ditanda kuning. Rekod lama boleh menggunakan sejarah timeframe semasa atau snapshot OHLC.</p>
       </div>
