@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "GENJI PURE ENGULFING",
+  "short_name": "GENJI",
+  "description": "XAUUSD chart dan analisis pattern engulfing.",
+  "lang": "ms-MY",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08110a",
+  "theme_color": "#08110a",
+  "icons": [
+    {"src":"icons/genji-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
