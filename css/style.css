@@ -304,3 +304,52 @@ footer{border-radius:10px;border-color:var(--border);background:#101a2c}
   #chart{height:350px}
   .signal-meta{font-size:9px}
 }
+
+
+/* KEDAH EDITION — BLACK / GREEN / YELLOW */
+:root{
+  --bg:#050806;
+  --panel:#0b120d;
+  --panel2:#111d14;
+  --border:#29452d;
+  --text:#f3f8ef;
+  --muted:#9eae9b;
+  --green:#19c463;
+  --red:#f2cf36;
+  --yellow:#f2cf36;
+  --blue:#f2cf36;
+}
+body{
+  background:radial-gradient(ellipse at 50% -18%,rgba(25,196,99,.13),transparent 55%),#050806;
+}
+.topbar{background:rgba(5,8,6,.96);border-bottom-color:rgba(242,207,54,.28)}
+.price-box{background:linear-gradient(135deg,#142719,#0a100b);border-color:#365c38}
+.config{background:linear-gradient(145deg,#101b12,#090e0a);border-color:#29452d}
+.config select{background:#080d09;border-color:#365c38;color:#f3f8ef}
+button.green{background:linear-gradient(135deg,#20d36b,#087b3c);color:#041007;border:1px solid #39e47e;font-weight:900}
+button.ghost{background:#111b13;border-color:#39543a;color:#e5efdf}
+.chart-wrap{background:#050a07;border-color:#315237}
+.chart-hud{background:rgba(3,8,5,.88);border-color:rgba(242,207,54,.3)}
+.analysis-card{background:linear-gradient(145deg,#0e190f,#080d09);border-color:#29452d}
+.analysis-tabs{background:rgba(5,10,7,.97);border-bottom-color:#3b5427}
+.analysis-tab{background:#111b13;border-color:#304a32;color:#bdcbb8}
+.analysis-tab.active{background:linear-gradient(135deg,#1b6b37,#12351e);border-color:#f2cf36;color:#fff4b8;box-shadow:inset 0 0 0 1px rgba(242,207,54,.2)}
+.metric,.perf-metric,.zones-summary>div,.memory-summary>div,.mtf-grid>div,.regime-grid>div{
+  background:linear-gradient(145deg,#17291a,#0e180f);border-color:#315238
+}
+.signal-result{border-color:#3a6a3d}
+.alert-card,.confirmation-card,.regime-card,.mtf-card,.insight-card{
+  background:linear-gradient(145deg,#101b12,#0a100b);border-color:#315238
+}
+.regime-pill.trend,.mtf-pill.aligned{background:#123b22;color:#56e58b}
+.regime-pill.range,.regime-pill.high,.mtf-pill.conflict,.mtf-pill.unknown{background:#403713;color:#ffe36b}
+.regime-pill.low{background:#1a2a1c;color:#c5e8c1}
+.mtf-grid strong.bull{color:#45e78a}
+.mtf-grid strong.bear{color:#f2cf36}
+.mtf-grid strong.unknown{color:#f2cf36}
+.mtf-filter span,.regime-filter span,.insight-note{color:#f2cf36}
+.insight-note{border-left-color:#f2cf36}
+footer{background:#0b120d;border-color:#29452d}
+a{color:#f2cf36}
+input,select,textarea{accent-color:#19c463}
+button:focus-visible,.analysis-tab:focus-visible,select:focus-visible{outline:2px solid #f2cf36;outline-offset:2px}
