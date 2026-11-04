@@ -25,15 +25,15 @@
 </div>
 <section class="analysis-card" id="analysis-card">
   <div class="analysis-tabs" role="tablist" aria-label="Analisis GENJI">
-    <button class="analysis-tab active" data-tab="pure" role="tab" aria-selected="true">PURE ENGULFING</button>
-    <button class="analysis-tab" data-tab="market" role="tab" aria-selected="false">MARKET REGIME</button>
-    <button class="analysis-tab" data-tab="mtf" role="tab" aria-selected="false">MTF ALIGNMENT</button>
+    <button class="analysis-tab active" data-tab="signal" role="tab" aria-selected="true">OVERVIEW</button>
+    <button class="analysis-tab" data-tab="pure" role="tab" aria-selected="false">PATTERN</button>
+    <button class="analysis-tab" data-tab="mtf" role="tab" aria-selected="false">MTF</button>
+    <button class="analysis-tab" data-tab="market" role="tab" aria-selected="false">MARKET</button>
     <button class="analysis-tab" data-tab="reason" role="tab" aria-selected="false">REASON</button>
-    <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
+    <button class="analysis-tab" data-tab="zones" role="tab" aria-selected="false">ZONES</button>
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
-    <button class="analysis-tab" data-tab="zones" role="tab" aria-selected="false">S/R ZONES</button>
     <button class="analysis-tab" data-tab="memory" role="tab" aria-selected="false">AI MEMORY</button>
-    <button class="analysis-tab" data-tab="log" role="tab" aria-selected="false">SIGNAL LOG</button>
+    <button class="analysis-tab" data-tab="log" role="tab" aria-selected="false">LOG</button>
   </div>
   <div class="analysis-pane" id="tab-market" role="tabpanel">
     <section class="regime-card">
@@ -62,7 +62,7 @@
       <p class="mtf-disclaimer">ALL ALIGN bermaksud keempat-empat EMA sehala. Jika bercanggah atau data tidak cukup, sistem menahan signal kepada WAIT. Ini penapis teknikal, bukan ramalan atau jaminan hasil.</p>
     </section>
   </div>
-  <div class="analysis-pane active" id="tab-pure" role="tabpanel">
+  <div class="analysis-pane" id="tab-pure" role="tabpanel">
     <div class="analysis-grid">
       <div class="metric"><span>Pattern</span><strong id="a-pattern">Menunggu data</strong></div>
       <div class="metric"><span>Jenis engulfing</span><strong id="a-type">—</strong></div>
@@ -77,7 +77,7 @@
   <div class="analysis-pane" id="tab-reason" role="tabpanel">
     <div id="a-reason" class="reason-list"><p>Menunggu data candle untuk analisis.</p></div>
   </div>
-  <div class="analysis-pane" id="tab-signal" role="tabpanel">
+  <div class="analysis-pane active" id="tab-signal" role="tabpanel">
     <div class="signal-result wait" id="a-signal">WAIT</div>
     <p class="signal-caption" id="a-signal-detail">Menunggu pattern dan confirmation.</p>
     <section class="alert-card" aria-label="GENJI Signal Alert">
