@@ -1406,6 +1406,39 @@ function mergeById(existing,incoming,keyFn,limit){
   incoming.forEach(row=>{if(row&&typeof row==='object')map.set(keyFn(row),row);});
   return [...map.values()].slice(-limit);
 }
+async function validateGenjiBackup(file){
+  if(!file)return;
+  const report=$('backup-integrity');
+  report.textContent='Sedang menyemak fail…';
+  if(file.size>10*1024*1024){report.textContent='GAGAL · Fail melebihi had 10 MB.';return;}
+  try{
+    const parsed=JSON.parse(await file.text());
+    if(!parsed||parsed.app!=='GENJI PURE ENGULFING'||parsed.schema!==1||!parsed.data||typeof parsed.data!=='object'||Array.isArray(parsed.data))throw new Error('Format aplikasi atau nombor schema tidak dikenali.');
+    const data=parsed.data;
+    const specs=[
+      ['AI Learning','aiLearning',r=>r&&typeof r.id==='string'&&r.id.length>0&&typeof r.interval==='string'&&Number.isFinite(Number(r.time))],
+      ['Performance','performance',r=>r&&typeof r.id==='string'&&r.id.length>0&&typeof r.interval==='string'],
+      ['Signal Log','signalLog',r=>r&&typeof r.id==='string'&&r.id.length>0&&typeof r.interval==='string'],
+      ['Outcome sejarah','historicalOutcome',r=>r&&typeof r.id==='string'&&r.id.length>0&&typeof r.interval==='string'&&Number.isFinite(Number(r.time))&&['bull','bear'].includes(r.side)&&r.horizons&&typeof r.horizons==='object'&&!Array.isArray(r.horizons)]
+    ];
+    let total=0,valid=0,invalid=0,duplicates=0;
+    const lines=[];
+    for(const [label,key,test] of specs){
+      const rows=data[key]===undefined?[]:data[key];
+      if(!Array.isArray(rows)){lines.push(label+': format bukan senarai (gagal)');invalid++;continue;}
+      const ids=new Set();let good=0,bad=0,dupe=0;
+      rows.forEach(row=>{
+        if(!test(row)){bad++;return;}
+        if(ids.has(row.id)){dupe++;return;}
+        ids.add(row.id);good++;
+      });
+      total+=rows.length;valid+=good;invalid+=bad;duplicates+=dupe;
+      lines.push(label+': '+good+' sah · '+bad+' rosak · '+dupe+' ID pendua');
+    }
+    const unknown=Object.keys(data).filter(key=>!specs.some(spec=>spec[1]===key));
+    report.textContent=(invalid===0?'LULUS STRUKTUR':'AMARAN · ADA REKOD TIDAK SAH')+'\n'+lines.join('\n')+'\nJumlah: '+total+' · Sah unik: '+valid+' · Rosak: '+invalid+' · Pendua: '+duplicates+(unknown.length?'\nBahagian tambahan diabaikan oleh importer: '+unknown.join(', '):'')+'\nSemakan ini tidak mengubah atau mengimport sebarang data.';
+  }catch(error){report.textContent='GAGAL SEMAK · '+error.message+'\nTiada data diubah.';}
+}
 async function importGenjiBackup(file){
   if(!file)return;
   if(file.size>10*1024*1024){$('backup-status').textContent='Fail terlalu besar. Had import ialah 10 MB.';return;}
@@ -1667,7 +1700,9 @@ function bind() {
   renderHistoryLoader();
   $('btn-export-backup').onclick=downloadGenjiBackup;
   $('btn-import-backup').onclick=()=>$('backup-file-input').click();
-  $('backup-file-input').onchange=event=>importGenjiBackup(event.target.files?.[0]);
+  $('backup-file-input').onchange=event=>{importGenjiBackup(event.target.files?.[0]);event.target.value='';};
+  $('btn-check-backup').onclick=()=>$('backup-check-input').click();
+  $('backup-check-input').onchange=event=>{validateGenjiBackup(event.target.files?.[0]);event.target.value='';};
   renderBackupStats();
   renderBackupReminder();
   $('btn-clear-performance').onclick = () => {
