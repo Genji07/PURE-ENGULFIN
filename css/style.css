@@ -515,3 +515,15 @@ footer{width:100%;overflow-wrap:anywhere}
 .ai-backup-actions{display:flex;gap:8px;flex-wrap:wrap}
 .ai-backup-actions button{flex:1 1 180px;min-height:40px}
 @media(max-width:600px){.ai-backup-actions{display:grid;grid-template-columns:1fr}.ai-backup-actions button{width:100%}}
+
+/* GENJI HISTORICAL CANDLE LOADER */
+.history-loader-controls{display:flex;align-items:end;gap:9px;flex-wrap:wrap}
+.history-loader-controls label{display:flex;flex-direction:column;gap:5px;min-width:150px;color:#9eae9b;font-size:9px;font-weight:800}
+.history-loader-controls select{background:#080d09;color:#f3f8ef;border:1px solid #365c38;border-radius:7px;padding:10px}
+.history-loader-controls button{min-height:40px}
+.history-loader-controls button:disabled{opacity:.55;cursor:wait}
+.history-loader-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
+.history-loader-stats>div{min-width:0;padding:10px 8px;border:1px solid #29452d;border-radius:8px;background:#0b140d}
+.history-loader-stats span{display:block;color:#9eae9b;font-size:8px;font-weight:800}
+.history-loader-stats b{display:block;color:#f3f8ef;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
+@media(max-width:600px){.history-loader-controls{display:grid;grid-template-columns:1fr}.history-loader-controls label{min-width:0}.history-loader-controls button{width:100%}.history-loader-stats b{font-size:11px}}
