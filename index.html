@@ -23,7 +23,32 @@
   <div class="chart-hud" id="hud"><div><span class="sym">XAUUSD</span><span class="tf" id="hud-tf">5m</span></div><div class="ohlc" id="hud-ohlc"><span><span class="lbl">O</span>—</span><span><span class="lbl">H</span>—</span><span><span class="lbl">L</span>—</span><span><span class="lbl">C</span>—</span></div><div class="eng-line" id="hud-eng"><span class="dim">Corak: belum dikesan</span></div></div>
   <div class="hint">Scroll / pinch = zoom · Drag = pan · Double-click = reset</div>
 </div>
-<footer>Corak visual: Bullish/Bearish Engulfing · Pin Bar · Doji. Data feed pihak ketiga; bukan arahan dagangan.</footer>
+<section class="analysis-card" id="analysis-card">
+  <div class="analysis-tabs" role="tablist" aria-label="Analisis GENJI">
+    <button class="analysis-tab active" data-tab="pure" role="tab" aria-selected="true">PURE ENGULFING</button>
+    <button class="analysis-tab" data-tab="reason" role="tab" aria-selected="false">REASON</button>
+    <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
+  </div>
+  <div class="analysis-pane active" id="tab-pure" role="tabpanel">
+    <div class="analysis-grid">
+      <div class="metric"><span>Pattern</span><strong id="a-pattern">Menunggu data</strong></div>
+      <div class="metric"><span>Jenis engulfing</span><strong id="a-type">—</strong></div>
+      <div class="metric"><span>H1 trend</span><strong id="a-h1">—</strong></div>
+      <div class="metric"><span>M15 trend</span><strong id="a-m15">—</strong></div>
+      <div class="metric"><span>Candle</span><strong id="a-candle">—</strong></div>
+      <div class="metric"><span>Body strength</span><strong id="a-body">—</strong></div>
+    </div>
+  </div>
+  <div class="analysis-pane" id="tab-reason" role="tabpanel">
+    <div id="a-reason" class="reason-list"><p>Menunggu data candle untuk analisis.</p></div>
+  </div>
+  <div class="analysis-pane" id="tab-signal" role="tabpanel">
+    <div class="signal-result wait" id="a-signal">WAIT</div>
+    <p class="signal-caption" id="a-signal-detail">Menunggu pattern dan confirmation.</p>
+    <div class="signal-meta"><span>Timeframe carta: <b id="a-signal-tf">5m</b></span><span>Signal hanya selepas candle tutup</span></div>
+  </div>
+</section>
+<footer>Corak visual: Bullish/Bearish Engulfing · Pin Bar · Doji. Data feed pihak ketiga; bukan arahan dagangan. Bullish/Bearish Engulfing · Pin Bar · Doji. Data feed pihak ketiga; bukan arahan dagangan.</footer>
 <script src="js/script.js"></script>
 </body>
 </html>
