@@ -2,9 +2,13 @@
 
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
-  candles: [], tick: null, running: false, timer: null,
+  candles: [], tick: null, tickUpdatedAt: 0, running: false, timer: null,
   candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null
 };
+let pollingRunId = 0;
+let trendLastAttempt = 0;
+let trendRequest = null;
+const TREND_REFRESH_MS = 60000;
 const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
 const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
 const SIGNAL_LOG_KEY = 'genji_pure_engulfing_signal_log_v1';
@@ -474,11 +478,22 @@ async function fetchTrend() {
     state.trendM15=getTrend(m15,'15m');
     state.trendM5=getTrend(m5,'5m');
     state.trendError=null;
+    return true;
   } catch(error) {
     const missing={label:'DATA TAK ADA',direction:'unknown'};
     state.trendH4=state.trendH1=state.trendM15=state.trendM5=missing;
     state.trendError=error.message;
+    return false;
   }
+}
+async function refreshTrendIfNeeded(force=false) {
+  if (trendRequest) return trendRequest;
+  const hasTrend=Boolean(state.trendH4&&state.trendH1&&state.trendM15&&state.trendM5);
+  if (!force && hasTrend && Date.now()-trendLastAttempt<TREND_REFRESH_MS) return true;
+  trendLastAttempt=Date.now();
+  trendRequest=fetchTrend();
+  try { return await trendRequest; }
+  finally { trendRequest=null; }
 }
 async function fetchTick() {
   const data = await getJson('https://biquote.io/api/XAUUSD');
@@ -491,6 +506,7 @@ async function fetchTick() {
     marketState: data.marketState,
     stale: Boolean(data.stale)
   };
+  state.tickUpdatedAt = Date.now();
 }
 function calculateSupportResistance() {
   const closed = state.candles.filter(c => isClosedCandle(c, state.interval));
@@ -591,24 +607,29 @@ function detectPatterns() {
   }
   state.patterns = found;
 }
-async function tickOnce() {
-  if (!state.running) return;
-  const results = await Promise.allSettled([fetchCandles(), fetchTick(), fetchTrend()]);
+async function tickOnce(runId) {
+  if (!state.running || runId !== pollingRunId) return;
+  const results = await Promise.allSettled([fetchCandles(), fetchTick(), refreshTrendIfNeeded()]);
+  // Ignore responses from an older Start/Stop cycle or a previous timeframe.
+  if (!state.running || runId !== pollingRunId) return;
   if(results[0].status==='fulfilled'){updatePerformanceOutcomes();runAiBacktest();}
   state.candleError = results[0].status === 'rejected' ? results[0].reason.message : null;
   state.tickError = results[1].status === 'rejected' ? results[1].reason.message : null;
   renderAll();
-  if (state.running) state.timer = setTimeout(tickOnce, state.pollMs);
+  if (state.running && runId === pollingRunId) state.timer = setTimeout(()=>tickOnce(runId), state.pollMs);
 }
 function start() {
   if (state.running) return;
+  pollingRunId++;
+  const runId=pollingRunId;
   state.running = true;
   $('btn-start').disabled = true;
   $('btn-stop').disabled = false;
-  tickOnce();
+  tickOnce(runId);
 }
 function stop() {
   state.running = false;
+  pollingRunId++;
   clearTimeout(state.timer);
   state.timer = null;
   $('btn-start').disabled = false;
@@ -618,11 +639,14 @@ function stop() {
 function renderTopbar() {
   const dot = $('conn-dot');
   dot.className = 'live-dot' + (state.candleError ? ' err' : state.running ? ' on' : '');
+  const tickAgeMs=state.tickUpdatedAt?Date.now()-state.tickUpdatedAt:Infinity;
+  const tickIsOld=Boolean(state.tickError || state.tick?.stale || tickAgeMs>30000);
   let message = state.candleError
     ? 'RALAT DATA: ' + state.candleError
     : state.running ? 'LIVE · ' + state.interval + ' · ' + state.pollMs / 1000 + 's'
     : 'Berhenti';
-  if (state.tickError && !state.candleError) message += ' · Harga live tidak tersedia';
+  if (tickIsOld && state.tick) message += ' · HARGA LAMA';
+  else if (state.tickError && !state.candleError) message += ' · Harga live tidak tersedia';
   $('conn-text').textContent = message;
 
   if (state.tick) {
