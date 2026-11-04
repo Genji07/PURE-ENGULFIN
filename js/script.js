@@ -783,15 +783,12 @@ function renderChart() {
   const padding = (highest - lowest) * 0.08 || 1;
   const maxPrice = highest + padding, minPrice = lowest - padding;
   const priceRange = maxPrice - minPrice;
-  const priceHeight = drawHeight * (1 - chart.volPct);
-  const volumeHeight = drawHeight - priceHeight;
+  const priceHeight = drawHeight;
   const y = price => (maxPrice - price) / priceRange * priceHeight;
   const x = index => (index - first) * spacing + spacing / 2;
 
   ctx.fillStyle = '#0f1729';
   ctx.fillRect(0, 0, drawWidth, drawHeight);
-  ctx.fillStyle = '#0c1322';
-  ctx.fillRect(0, priceHeight, drawWidth, volumeHeight);
   // Draw support/resistance bands behind the candles.
   for (const zone of state.zones) {
     if (zone.high < minPrice || zone.low > maxPrice) continue;
@@ -821,8 +818,6 @@ function renderChart() {
     ctx.fillText(price.toFixed(2), drawWidth + 7, py);
   }
 
-  let maxVolume = 1;
-  for (let i = start; i < end; i++) maxVolume = Math.max(maxVolume, candles[i].v || 0);
   for (let i = start; i < end; i++) {
     const candle = candles[i], px = x(i);
     const bullish = candle.c >= candle.o;
@@ -840,13 +835,6 @@ function renderChart() {
     ctx.fillStyle = color;
     ctx.fillRect(px - bodyWidth / 2, top, bodyWidth, bodyHeight);
 
-    if (candle.v > 0) {
-      const barHeight = candle.v / maxVolume * volumeHeight;
-      ctx.globalAlpha = 0.45;
-      ctx.fillRect(px - bodyWidth / 2, priceHeight + volumeHeight - barHeight,
-        bodyWidth, barHeight);
-      ctx.globalAlpha = 1;
-    }
 
     const pattern = state.patterns.find(item => item.index === i);
     if (pattern) {
