@@ -429,3 +429,42 @@ footer{width:100%;overflow-wrap:anywhere}
   .analysis-tabs{gap:5px;padding:7px}
   .analysis-tab{min-width:86px;padding:10px 11px;font-size:10px}
 }
+
+
+/* FINAL MOBILE TAB FIX: tabs stay in normal document flow, never cover content */
+.analysis-tabs{
+  position:relative !important;
+  top:auto !important;
+  z-index:1 !important;
+  display:flex !important;
+  flex-flow:row nowrap !important;
+  justify-content:flex-start !important;
+  align-items:stretch !important;
+  width:100%;
+  max-width:100%;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  gap:6px;
+  padding:8px;
+  backdrop-filter:none !important;
+}
+.analysis-tab{
+  position:static !important;
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:88px !important;
+  max-width:none !important;
+  white-space:nowrap !important;
+  overflow-wrap:normal !important;
+  text-align:center;
+  margin:0 !important;
+  line-height:1.25;
+  padding:10px 12px;
+}
+@media(max-width:700px){
+  .analysis-tabs{position:relative !important;top:auto !important;z-index:1 !important;gap:5px;padding:7px}
+  .analysis-tab{min-width:86px !important;padding:10px 11px;font-size:10px}
+}
