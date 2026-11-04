@@ -200,15 +200,23 @@ async function fetchCandles(){
   if(!Array.isArray(data.bars)) throw new Error('Format bars tidak sah');
 
   // biquote pulangkan bars oldest→newest
-  state.candles = data.bars.map(b => ({
-    t: new Date(b.time || b.t || b.timestamp).getTime() / 1000,
-    o: +b.open,
-    h: +b.high,
-    l: +b.low,
-    c: +b.close,
-  })).filter(c => isFinite(c.o) && isFinite(c.c));
+  const toUnixSeconds = value => {
+    if(typeof value === 'number' || /^\\d+(\\.\\d+)?$/.test(String(value || ''))){
+      const n=Number(value);
+      return Math.floor(n > 1e12 ? n/1000 : n > 1e10 ? n/1000 : n);
+    }
+    const parsed=Date.parse(value);
+    return Number.isFinite(parsed) ? Math.floor(parsed/1000) : NaN;
+  };
+  const parsed = data.bars.map(b => ({
+    t: toUnixSeconds(b.time ?? b.t ?? b.timestamp),
+    o: +b.open, h: +b.high, l: +b.low, c: +b.close,
+  })).filter(c => Number.isFinite(c.t) && [c.o,c.h,c.l,c.c].every(Number.isFinite))
+    .sort((a,b)=>a.t-b.t);
+  // Lightweight Charts requires strictly ascending, unique timestamps.
+  state.candles = parsed.filter((c,i)=>i===0 || c.t>parsed[i-1].t);
 
-  if(state.candles.length === 0) throw new Error('Tiada candle');
+  if(state.candles.length === 0) throw new Error('Tiada candle dengan masa/harga yang sah daripada feed');
 }
 
 /* =========================================================
