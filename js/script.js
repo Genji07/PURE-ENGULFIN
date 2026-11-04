@@ -778,6 +778,8 @@ function renderAnalysis() {
   const closedIndex = candles.map((c,i)=>isClosedCandle(c,state.interval)?i:-1).filter(i=>i>=0).pop();
   const candle = closedIndex == null ? null : candles[closedIndex];
   const pattern = closedIndex == null ? null : state.patterns.find(p=>p.index===closedIndex);
+  const closedEngulfings=state.patterns.filter(p=>p.name.includes('Engulfing')&&candles[p.index]&&isClosedCandle(candles[p.index],state.interval));
+  const latestEngulfing=closedEngulfings.length?closedEngulfings[closedEngulfings.length-1]:null;
   const h1 = state.trendH1, m15 = state.trendM15;
   const mtf=renderMtfAlignment();
   const patternSide = pattern?.name.includes('Bullish') ? 'bull' : pattern?.name.includes('Bearish') ? 'bear' : null;
@@ -828,6 +830,7 @@ function renderAnalysis() {
     }
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
+  $('a-pattern-history').textContent=closedEngulfings.length+' ditemui · '+(latestEngulfing?latestEngulfing.name+' · '+new Date(candles[latestEngulfing.index].t*1000).toLocaleString('ms-MY'):'Belum ada engulfing tertutup dalam data dimuatkan');
   $('a-type').textContent=pattern?.type || (state.engDef==='both'?'BODY + FULL':state.engDef==='body'?'PURE BODY':'FULL CANDLE');
   $('a-h1').textContent=h1?.label||'MENUNGGU';
   $('a-m15').textContent=m15?.label||'MENUNGGU';
