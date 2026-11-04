@@ -329,9 +329,24 @@ function unixTime(value) {
   return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : NaN;
 }
 async function getJson(url) {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) throw new Error('HTTP ' + response.status);
-  return response.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) {
+      let detail = '';
+      try { const body = await response.json(); detail = body.message || body.error || ''; } catch (_) {}
+      throw new Error('HTTP ' + response.status + (detail ? ' · ' + detail : ''));
+    }
+    const data = await response.json();
+    if (!data || typeof data !== 'object') throw new Error('Respons API bukan JSON yang sah');
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('API lambat melebihi 15 saat');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 function parseCandleBars(bars) {
   if(!Array.isArray(bars))throw new Error('Format OHLC tidak dikenali');
@@ -389,9 +404,10 @@ function renderHistoryLoader(){
 }
 async function loadHistoricalCandles(){
   const button=$('btn-load-history'),status=$('history-load-status'),note=$('history-load-note');
-  const requested=Number($('history-load-limit').value);
+  // BiQuote documents a maximum of 1,000 OHLC bars per request.
+  const requested=Math.min(1000,Math.max(100,Number($('history-load-limit').value)||1000));
   button.disabled=true;button.textContent='Sedang memuat…';status.textContent='MEMUAT';
-  note.textContent='Meminta sehingga '+requested.toLocaleString('en-US')+' candle '+state.interval+' daripada penyedia data…';
+  note.textContent='Meminta sehingga '+requested.toLocaleString('en-US')+' candle '+state.interval+' daripada BiQuote API (had 1,000 setiap permintaan)…';
   try{
     const tf=state.interval;
     const data=await getJson('https://biquote.io/api/XAUUSD/ohlc?interval='+encodeURIComponent(tf)+'&limit='+requested);
