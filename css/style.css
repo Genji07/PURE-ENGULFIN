@@ -541,3 +541,24 @@ footer{width:100%;overflow-wrap:anywhere}
 .bt-result-row:last-child{border-bottom:0}
 .bt-result-row strong{display:block;font-size:10px}
 .bt-result-row small{display:block;color:#9eae9b;font-size:8px;margin-top:4px}
+
+
+/* GENJI AI PATTERN LEARNING PRO */
+.plp-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:10px 0}
+.plp-summary>div{min-width:0;padding:10px 8px;border:1px solid #29452d;border-radius:8px;background:#0b140d}
+.plp-summary span,.plp-decision>span{display:block;color:#9eae9b;font-size:8px;font-weight:900;letter-spacing:.35px}
+.plp-summary b{display:block;color:#f3f8ef;font-size:17px;margin-top:5px}
+.plp-decision{padding:12px;border:1px solid #365c38;border-radius:9px;background:linear-gradient(135deg,#142719,#0b120d)}
+.plp-decision strong{display:block;font-size:23px;margin-top:5px;color:#f2cf36}
+.plp-decision strong.plp-buy{color:#19c463}.plp-decision strong.plp-sell{color:#f2cf36}.plp-decision strong.plp-wait{color:#d5dfd1}
+.plp-decision p{font-size:10px;line-height:1.5;color:#d8e5d3;margin:6px 0 0}
+.plp-reasons{display:grid;gap:6px;margin-top:9px}
+.plp-reason-row{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:7px;padding:9px;border:1px solid #304b32;border-radius:7px;background:#0b140d;font-size:9px}
+.plp-reason-row.pass>b{color:#19c463}.plp-reason-row.fail>b{color:#f2cf36}
+.plp-reason-row small{font-size:8px;color:#9eae9b;font-weight:900}
+.plp-history-head{font-size:10px;font-weight:900;color:#f2cf36;margin:14px 0 7px}
+.plp-history{max-height:250px;overflow:auto;border:1px solid #29452d;border-radius:8px;padding:0 9px;background:#0a110b}
+.plp-history-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #243a27}
+.plp-history-row:last-child{border-bottom:0}
+.plp-history-row strong{display:block;font-size:9px}.plp-history-row small{display:block;color:#9eae9b;font-size:8px;margin-top:4px}
+@media(max-width:600px){.plp-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.plp-reason-row{grid-template-columns:16px 1fr auto;padding:8px 7px}}
