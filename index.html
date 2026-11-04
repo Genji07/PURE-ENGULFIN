@@ -50,6 +50,16 @@
   <div class="analysis-pane" id="tab-signal" role="tabpanel">
     <div class="signal-result wait" id="a-signal">WAIT</div>
     <p class="signal-caption" id="a-signal-detail">Menunggu pattern dan confirmation.</p>
+    <section class="alert-card" aria-label="GENJI Signal Alert">
+      <div class="alert-card-head"><strong>GENJI SIGNAL ALERT</strong><span id="alert-state">ALERT SEDIA</span></div>
+      <div class="alert-controls">
+        <button id="btn-alert-sound" class="ghost" type="button" aria-pressed="false">Bunyi: OFF</button>
+        <button id="btn-alert-notify" class="ghost" type="button" aria-pressed="false">Notifikasi: OFF</button>
+      </div>
+      <div id="alert-latest" class="alert-latest">Belum ada alert baharu.</div>
+      <div id="alert-history" class="alert-history"><p>Alert BUY/SELL/WAIT akan dipaparkan di sini apabila candle ditutup.</p></div>
+      <p class="alert-disclaimer">Alert ialah pemberitahuan berdasarkan syarat indikator, bukan arahan untuk membuka posisi. Bunyi dan notifikasi perlu diaktifkan sendiri.</p>
+    </section>
     <div class="signal-meta"><span>Timeframe carta: <b id="a-signal-tf">5m</b></span><span>Signal hanya selepas candle tutup</span></div>
     <section class="confirmation-card" aria-label="GENJI Confirmation Score">
       <div class="confirmation-head"><div><strong>GENJI CONFIRMATION SCORE</strong><small>Penilaian syarat teknikal · maksimum 100 mata</small></div><div class="confirmation-total"><b id="score-total">0</b><span>/100</span></div></div>
