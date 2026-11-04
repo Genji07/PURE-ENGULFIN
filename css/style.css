@@ -137,3 +137,17 @@ footer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;pad
 .log-ohlc b{display:block;color:var(--text);font-size:11px;margin-top:3px}
 .log-disclaimer{font-size:10px;color:var(--muted);line-height:1.5;margin-top:12px}
 @media(max-width:600px){.log-filters{align-items:flex-start;flex-direction:column}.log-row{grid-template-columns:1fr}.log-row button{justify-self:start}}
+
+/* GENJI pattern statistics */
+.pattern-stats-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:15px 0 8px}
+.pattern-stats-head strong{display:block;font-size:12px}.pattern-stats-head small,.pattern-stats-head span{display:block;color:var(--muted);font-size:9px}
+.pattern-stats{display:grid;gap:7px}
+.pattern-stat-row{padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:7px}
+.pattern-stat-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pattern-stat-title strong{font-size:11px}.pattern-stat-title span{font-size:9px;font-weight:800}
+.pattern-stat-title .buy{color:#46d6b8}.pattern-stat-title .sell{color:#ff8585}
+.pattern-stat-metrics{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 6px}
+.pattern-stat-metrics span{font-size:9px;color:var(--muted)}.pattern-stat-metrics b{color:var(--text);margin-left:3px}
+.pattern-stat-track{height:5px;background:#3a2630;border-radius:5px;overflow:hidden}
+.pattern-stat-track i{display:block;height:100%;background:#26a69a;border-radius:5px}
+.pattern-stat-row>small{display:block;color:var(--muted);font-size:9px;margin-top:5px}
