@@ -1402,8 +1402,8 @@ function downloadGenjiBackup(){
 }
 function mergeById(existing,incoming,keyFn,limit){
   const map=new Map();
-  existing.forEach(row=>map.set(keyFn(row),row));
-  incoming.forEach(row=>{if(row&&typeof row==='object')map.set(keyFn(row),row);});
+  existing.forEach(row=>{if(row&&typeof row==='object')map.set(keyFn(row),row);});
+  incoming.forEach(row=>{if(row&&typeof row==='object'&&!map.has(keyFn(row)))map.set(keyFn(row),row);});
   return [...map.values()].slice(-limit);
 }
 async function validateGenjiBackup(file){
