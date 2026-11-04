@@ -871,6 +871,66 @@ function runAiBacktest(){
   $('ai-backtest-note').textContent='Ujian '+requested+': '+patterns.length+' pattern ditemui, '+total+' keputusan selesai ('+wins+' WIN / '+losses+' LOSS). Liputan data candle: '+(days>0?days.toFixed(1)+' hari':'tidak diketahui')+'. '+(range!=='all'&&days<Number(range)?'AMARAN: data tidak meliputi keseluruhan tempoh yang dipilih; keputusan hanya berdasarkan candle yang dimuatkan.':'Keputusan hanya berdasarkan data yang dimuatkan.');
 }
 
+
+function renderBackupStats(){
+  if(!$('backup-ai-count'))return;
+  $('backup-ai-count').textContent=String(aiLearningRecords.length);
+  $('backup-perf-count').textContent=String(performanceRecords.length);
+  $('backup-log-count').textContent=String(signalLog.length);
+}
+function downloadGenjiBackup(){
+  const payload={
+    app:'GENJI PURE ENGULFING',
+    schema:1,
+    exportedAt:new Date().toISOString(),
+    data:{
+      aiLearning:aiLearningRecords,
+      performance:performanceRecords,
+      signalLog:signalLog
+    }
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download='genji-backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  $('backup-status').textContent='Backup berjaya dijana. Simpan fail JSON di tempat yang selamat.';
+}
+function mergeById(existing,incoming,keyFn,limit){
+  const map=new Map();
+  existing.forEach(row=>map.set(keyFn(row),row));
+  incoming.forEach(row=>{if(row&&typeof row==='object')map.set(keyFn(row),row);});
+  return [...map.values()].slice(-limit);
+}
+async function importGenjiBackup(file){
+  if(!file)return;
+  if(file.size>10*1024*1024){$('backup-status').textContent='Fail terlalu besar. Had import ialah 10 MB.';return;}
+  try{
+    const text=await file.text();
+    const parsed=JSON.parse(text);
+    if(parsed.app!=='GENJI PURE ENGULFING'||parsed.schema!==1||!parsed.data||typeof parsed.data!=='object')throw new Error('Format backup tidak dikenali.');
+    const data=parsed.data;
+    const validArray=(value)=>Array.isArray(value)?value:[];
+    const ai=validArray(data.aiLearning).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string'&&Number.isFinite(Number(r.time)));
+    const perf=validArray(data.performance).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string');
+    const logs=validArray(data.signalLog).filter(r=>r&&typeof r.id==='string'&&typeof r.interval==='string');
+    aiLearningRecords=mergeById(aiLearningRecords,ai,r=>r.id,3000);
+    performanceRecords=mergeById(performanceRecords,perf,r=>r.id,500);
+    signalLog=mergeById(signalLog,logs,r=>r.id,1000);
+    saveAiLearning();
+    savePerformanceRecords();
+    saveSignalLog();
+    renderBackupStats();
+    renderPerformance();
+    renderSignalLog();
+    $('backup-status').textContent='Import selesai: '+ai.length+' rekod AI, '+perf.length+' performance dan '+logs.length+' signal log dibaca. Rekod sedia ada dikekalkan dan digabungkan.';
+  }catch(error){
+    $('backup-status').textContent='Import gagal: '+error.message;
+  }
+}
+
 function drawTag(ctx, x, y, text, background, foreground) {
   ctx.font = 'bold 10px system-ui';
   const width = ctx.measureText(text).width + 12;
@@ -1066,6 +1126,10 @@ function bind() {
   };
 
   $('btn-run-backtest').onclick=runAiBacktest;
+  $('btn-export-backup').onclick=downloadGenjiBackup;
+  $('btn-import-backup').onclick=()=>$('backup-file-input').click();
+  $('backup-file-input').onchange=event=>importGenjiBackup(event.target.files?.[0]);
+  renderBackupStats();
   $('btn-clear-performance').onclick = () => {
     if (!confirm('Padam semua rekod performance yang disimpan pada peranti ini?')) return;
     performanceRecords = [];
