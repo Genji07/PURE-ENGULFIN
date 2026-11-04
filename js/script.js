@@ -996,7 +996,9 @@ function drawPatternReplay(record,context=[]){
   let bars=context.filter(valid);
   if(!bars.length&&valid({o:record.open,h:record.high,l:record.low,c:record.close}))bars=[{o:Number(record.open),h:Number(record.high),l:Number(record.low),c:Number(record.close),isSetup:true}];
   if(!bars.length){ctx.fillStyle='#f2cf36';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('OHLC tidak lengkap untuk replay',w/2,h/2);return;}
-  const max=Math.max(...bars.map(c=>Number(c.h))),min=Math.min(...bars.map(c=>Number(c.l))),range=max-min||1;
+  const levels=[{key:'entry',label:'ENTRY',value:Number(record.entry),color:'#f2cf36'},{key:'stop',label:'STOP',value:Number(record.stop),color:'#e06b61'},{key:'target',label:'TARGET',value:Number(record.target),color:'#19c463'}].filter(level=>Number.isFinite(level.value));
+  const rawMax=Math.max(...bars.map(c=>Number(c.h))),rawMin=Math.min(...bars.map(c=>Number(c.l)));
+  const max=Math.max(rawMax,...levels.map(level=>level.value)),min=Math.min(rawMin,...levels.map(level=>level.value)),range=max-min||1;
   const left=54,right=w-54,top=20,bottom=h-34,y=v=>top+(max-v)/range*(bottom-top);
   ctx.strokeStyle='#29452d';ctx.lineWidth=1;ctx.font='11px system-ui';ctx.fillStyle='#a8b8a4';ctx.textAlign='left';
   for(let i=0;i<=4;i++){const yy=top+(bottom-top)*i/4;ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.fillText((max-range*i/4).toFixed(2),right+5,yy+4);}
@@ -1008,7 +1010,10 @@ function drawPatternReplay(record,context=[]){
     ctx.fillStyle=color;ctx.fillRect(x-candleW/2,bodyTop,candleW,bodyHeight);
     if(c.isSetup){ctx.fillStyle='#f2cf36';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('SETUP',x,13);}
   });
-  ctx.fillStyle='#a8b8a4';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(bars.length>1?'Kuning = candle setup · Hijau = bullish · Merah = bearish':'SNAPSHOT CANDLE',w/2,h-8);
+  levels.forEach(level=>{
+    const yy=y(level.value);ctx.save();ctx.strokeStyle=level.color;ctx.fillStyle=level.color;ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.setLineDash([]);ctx.font='bold 9px system-ui';ctx.textAlign='left';ctx.fillText(level.label+' '+level.value.toFixed(2),left+4,Math.max(top+10,Math.min(bottom-3,yy-4)));ctx.restore();
+  });
+  ctx.fillStyle='#a8b8a4';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(bars.length>1?'Kuning = setup · Garis = paras simulasi · Hijau = bullish · Merah = bearish':'SNAPSHOT CANDLE · Garis = paras simulasi',w/2,h-8);
 }
 function closePatternReplay(){
   $('pr-replay').hidden=true;
