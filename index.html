@@ -77,7 +77,7 @@
   .dot.green{background:var(--green);} .dot.red{background:var(--red);}
   .dot.yellow{background:var(--yellow);} .dot.blue{background:var(--blue);}
 
-  #chart{width:100%;height:400px;display:block;background:var(--panel2);border-radius:8px;}
+  #chart{width:100%;height:440px;background:var(--panel2);border-radius:8px;overflow:hidden;touch-action:pan-y;}
 
   .muted{color:var(--muted);} .green{color:var(--green);} .red{color:var(--red);}
   .yellow{color:var(--yellow);} .blue{color:var(--blue);} .orange{color:var(--orange);}
@@ -85,6 +85,7 @@
   footer{font-size:12px;color:var(--muted);text-align:center;margin-top:16px;
     padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;}
 </style>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
 
@@ -163,7 +164,9 @@
       <span><i class="dot yellow"></i>Candle forming</span>
     </div>
   </div>
-  <canvas id="chart"></canvas>
+  <div id="chart" aria-label="Carta candlestick interaktif"></div>
+  <p class="muted" style="font-size:11px;margin:8px 0 0">Gerakkan carta: drag · Zoom: roda tetikus / pinch · Crosshair: gerakkan kursor. Label corak ialah pengenalan visual, bukan isyarat dagangan.</p>
+  <div id="pattern-summary" class="muted" style="font-size:12px;margin-top:8px">Corak dikesan akan dipaparkan di sini.</div>
 </section>
 
 <footer>
@@ -336,85 +339,83 @@ function renderStatus(){
 }
 
 /* =========================================================
-   CHART (Canvas candlestick)
+   INTERACTIVE CHART + EDUCATIONAL PATTERN DETECTION
    ========================================================= */
-function renderChart(){
-  const canvas = document.getElementById('chart');
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  const W = rect.width, H = rect.height;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
+let tvChart = null;
+let candleSeries = null;
+let chartMarkers = [];
 
-  const candles = state.candles;
-  if(!candles.length) return;
-
-  const pad = { top:16, right:72, bottom:18, left:10 };
-  const cw = W - pad.left - pad.right;
-  const ch = H - pad.top - pad.bottom;
-
-  const hi = Math.max(...candles.map(c=>c.h));
-  const lo = Math.min(...candles.map(c=>c.l));
-  const padR = (hi-lo||1)*0.06;
-  const maxP = hi+padR, minP = lo-padR;
-  const rng = maxP-minP;
-  const yOf = p => pad.top + ch - ((p-minP)/rng)*ch;
-
-  // grid + label harga
-  ctx.strokeStyle = '#1c2941'; ctx.fillStyle = '#8b9bb4';
-  ctx.font = '11px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  for(let g=0; g<=5; g++){
-    const price = minP + (rng*g)/5;
-    const y = yOf(price);
-    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
-    ctx.fillText(price.toFixed(2), W-pad.right+8, y);
-  }
-
-  const step = cw / candles.length;
-  const bw = Math.max(3, step*0.6);
-  const lastIdx = candles.length - 1;
-
-  candles.forEach((c,i) => {
-    const x = pad.left + step*i + step/2;
-    const bull = c.c >= c.o;
-    const col = bull ? '#22c55e' : '#ef4444';
-
-    // wick
-    ctx.strokeStyle = col; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, yOf(c.h)); ctx.lineTo(x, yOf(c.l)); ctx.stroke();
-
-    // body
-    const yO = yOf(c.o), yC = yOf(c.c);
-    const top = Math.min(yO,yC);
-    const bodyH = Math.max(1.5, Math.abs(yC-yO));
-    ctx.fillStyle = col;
-    ctx.fillRect(x-bw/2, top, bw, bodyH);
-
-    // highlight candle terakhir (forming / latest)
-    if(i === lastIdx){
-      ctx.strokeStyle = '#eab308';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x-bw/2-2, top-2, bw+4, bodyH+4);
+function detectPatterns(candles){
+  const found = [];
+  const body = c => Math.abs(c.c-c.o);
+  const upper = c => c.h-Math.max(c.o,c.c);
+  const lower = c => Math.min(c.o,c.c)-c.l;
+  candles.forEach((c,i)=>{
+    if(i===0) return;
+    const p=candles[i-1], b=body(c), range=Math.max(c.h-c.l,0.00001);
+    const prevBody=body(p);
+    let name=null, position='aboveBar', color='#eab308', shape='circle';
+    // Engulfing: current real body fully covers previous real body
+    if(c.c>c.o && p.c<p.o && c.o<=p.c && c.c>=p.o){
+      name='Bullish Engulfing'; position='belowBar'; color='#22c55e'; shape='arrowUp';
+    } else if(c.c<c.o && p.c>p.o && c.o>=p.c && c.c<=p.o){
+      name='Bearish Engulfing'; position='aboveBar'; color='#ef4444'; shape='arrowDown';
+    } else if(b/range<=0.10){
+      name='Doji'; position='aboveBar'; color='#eab308'; shape='circle';
+    } else if(lower(c)>=b*2 && upper(c)<=b*0.7){
+      name='Bullish Pin Bar'; position='belowBar'; color='#22c55e'; shape='arrowUp';
+    } else if(upper(c)>=b*2 && lower(c)<=b*0.7){
+      name='Bearish Pin Bar'; position='aboveBar'; color='#ef4444'; shape='arrowDown';
     }
+    if(name) found.push({time:Math.floor(c.t), position, color, shape, text:name});
   });
-
-  // garis harga live
-  if(state.tick && isFinite(state.tick.mid)){
-    const y = yOf(state.tick.mid);
-    if(y > pad.top && y < H-pad.bottom){
-      ctx.strokeStyle = '#3b82f6';
-      ctx.setLineDash([4,3]); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = '#3b82f6'; ctx.font = 'bold 10px system-ui';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-      ctx.fillText(state.tick.mid.toFixed(2), pad.left+2, y-1);
-    }
-  }
+  return found;
 }
 
+function initInteractiveChart(){
+  const el=document.getElementById('chart');
+  if(!window.LightweightCharts){ el.textContent='Library carta tidak dapat dimuat. Semak sambungan internet.'; return; }
+  tvChart=LightweightCharts.createChart(el,{
+    width:el.clientWidth,
+    height:el.clientHeight,
+    layout:{background:{type:'solid',color:'#16233d'},textColor:'#8b9bb4'},
+    grid:{vertLines:{color:'#1c2941'},horzLines:{color:'#1c2941'}},
+    rightPriceScale:{borderColor:'#22314f'},
+    timeScale:{borderColor:'#22314f',timeVisible:true,secondsVisible:false},
+    crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
+    handleScroll:{mouseWheel:false,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},
+    handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true},
+  });
+  candleSeries=tvChart.addCandlestickSeries({
+    upColor:'#22c55e',downColor:'#ef4444',
+    borderUpColor:'#22c55e',borderDownColor:'#ef4444',
+    wickUpColor:'#22c55e',wickDownColor:'#ef4444',
+  });
+  new ResizeObserver(()=>{ if(tvChart) tvChart.applyOptions({width:el.clientWidth,height:el.clientHeight}); }).observe(el);
+}
+
+function renderChart(){
+  if(!candleSeries) return;
+  const data=state.candles.map(c=>({
+    time:Math.floor(c.t),open:c.o,high:c.h,low:c.l,close:c.c
+  })).filter(c=>Number.isFinite(c.time)&&Number.isFinite(c.open)&&Number.isFinite(c.close));
+  if(!data.length) return;
+  candleSeries.setData(data);
+  chartMarkers=detectPatterns(state.candles);
+  candleSeries.setMarkers(chartMarkers);
+  const summary=document.getElementById('pattern-summary');
+  const recent=chartMarkers.slice(-5).reverse();
+  summary.textContent=recent.length
+    ? 'Corak terkini: '+recent.map(m=>m.text).join(' · ')
+    : 'Belum ada corak yang dikenal pasti dalam candle yang dimuatkan.';
+  if(state.tick && Number.isFinite(state.tick.mid)){
+    // Price line is a visual reference only.
+    if(!window.livePriceLine){
+      window.livePriceLine=candleSeries.createPriceLine({price:state.tick.mid,color:'#3b82f6',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'Harga feed'});
+    } else window.livePriceLine.applyOptions({price:state.tick.mid});
+  }
+}
+ 
 /* =========================================================
    EVENTS
    ========================================================= */
@@ -447,6 +448,7 @@ function bindUI(){
 /* =========================================================
    BOOT
    ========================================================= */
+initInteractiveChart();
 bindUI();
 renderTopbar();
 // Auto-start
