@@ -600,6 +600,7 @@ function renderTopbar() {
   }
 }
 function renderAll() {
+  renderHistoryLoader();
   renderTopbar();
   renderChart();
   updateHud();
