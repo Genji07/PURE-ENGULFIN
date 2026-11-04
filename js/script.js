@@ -348,7 +348,14 @@ function parseCandleBars(bars) {
 }
 const CANDLE_CACHE_PREFIX='genji_pure_engulfing_candles_v1_';
 function loadCachedCandles(interval){
-  try{const rows=JSON.parse(localStorage.getItem(CANDLE_CACHE_PREFIX+interval)||'[]');return Array.isArray(rows)?parseCandleBars(rows).slice(-10000):[];}catch(_){return[];}
+  try{
+    const rows=JSON.parse(localStorage.getItem(CANDLE_CACHE_PREFIX+interval)||'[]');
+    if(!Array.isArray(rows))return[];
+    // Cache candles are historical snapshots: strip API open/closed flags so
+    // isClosedCandle derives closure from each candle timestamp and timeframe.
+    const clean=rows.map(c=>({t:c.t??c.time??c.timestamp,o:c.o??c.open,h:c.h??c.high,l:c.l??c.low,c:c.c??c.close,v:c.v??c.volume??0}));
+    return parseCandleBars(clean).slice(-10000);
+  }catch(_){return[];}
 }
 function saveCachedCandles(){
   try{localStorage.setItem(CANDLE_CACHE_PREFIX+state.interval,JSON.stringify(state.candles.slice(-10000)));}catch(error){console.warn('GENJI: cache candle tidak dapat disimpan',error);}
