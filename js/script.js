@@ -773,7 +773,6 @@ function renderMtfAlignment() {
   $('mtf-filter-status').textContent=same?'LULUS · '+(h1.direction==='bull'?'BUY BIAS':'SELL BIAS'):'BLOCK · WAIT';
   return {aligned:same,side:same?h1.direction:null,status};
 }
-function rSideMatches(row,side){ return row && row.side===side; }
 function renderAnalysis() {
   const candles = state.candles;
   const closedIndex = candles.map((c,i)=>isClosedCandle(c,state.interval)?i:-1).filter(i=>i>=0).pop();
@@ -893,7 +892,7 @@ function renderAnalysis() {
   const intervalOutcomeRows=savedOutcomeRows.filter(x=>x.interval===state.interval);
   const outcomeStats=outcomeHorizons.map(horizon=>{
     const sideStats=['bull','bear'].map(side=>{
-      const rows=intervalOutcomeRows.map(r=>r.horizons[String(horizon)]).filter(x=>x?.ready&&rSideMatches(x,side));
+      const rows=intervalOutcomeRows.filter(r=>r.side===side).map(r=>r.horizons[String(horizon)]).filter(x=>x?.ready);
       return {side,total:rows.length,positive:rows.filter(x=>x.classification==='POSITIF').length,negative:rows.filter(x=>x.classification==='NEGATIF').length,flat:rows.filter(x=>x.classification==='MENDATAR').length,average:rows.length?rows.reduce((sum,x)=>sum+x.move,0)/rows.length:null};
     });
     return {horizon,sideStats};
