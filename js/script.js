@@ -401,7 +401,7 @@ async function loadHistoricalCandles(){
     state.candles=mergeCandles(state.candles,bars,10000);
     saveCachedCandles();
     detectPatterns();calculateSupportResistance();renderAll();renderHistoryLoader();
-    updatePerformanceOutcomes();runAiBacktest();
+    updatePerformanceOutcomes();runAiBacktest();scanHistoricalSignals();
     const days=(state.candles.at(-1).t-state.candles[0].t)/86400;
     status.textContent='SELESAI';
     note.textContent='API memulangkan '+bars.length.toLocaleString('en-US')+' candle. Jumlah unik disimpan: '+state.candles.length.toLocaleString('en-US')+'. Liputan kira-kira '+(days>=1?days.toFixed(1)+' hari':(days*24).toFixed(1)+' jam')+'.';
@@ -992,7 +992,6 @@ function runAiBacktest(){
   $('bt-results-list').innerHTML=results.length?results.slice().reverse().slice(0,30).map(r=>'<div class="bt-result-row"><div><strong>'+r.side+' · '+r.pattern+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Entry '+(Number.isFinite(r.entry)?r.entry.toFixed(2):'—')+' · Stop '+(Number.isFinite(r.stop)?r.stop.toFixed(2):'—')+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Tiada pattern engulfing ditemui dalam data yang dipilih.</p>';
   $('ai-backtest-status').textContent=results.length?'SELESAI':'DATA TERHAD';
   const first=candles[0]?.t,last=candles[candles.length-1]?.t,days=first&&last?(last-first)/86400:0,requested=range==='all'?'semua data tersedia':range+' hari terakhir';
-  scanHistoricalSignals();
   $('ai-backtest-note').textContent='Ujian '+requested+': '+patterns.length+' pattern ditemui. '+wins+' WIN, '+losses+' LOSS, '+count('AMBIGUOUS')+' AMBIGUOUS dan '+(count('EXPIRED')+count('PENDING')+count('INVALID'))+' belum selesai/luput. Liputan candle: '+(days>0?days.toFixed(1)+' hari':'tidak diketahui')+'. '+(range!=='all'&&days<Number(range)?'AMARAN: data tidak meliputi keseluruhan tempoh yang dipilih; keputusan hanya berdasarkan candle yang dimuatkan.':'Keputusan hanya berdasarkan data yang dimuatkan.');
 }
 function exportBacktestCsv(){
@@ -1550,16 +1549,27 @@ function bind() {
 }
 
 async function autoBoot(){
-  bind();
-  restoreCachedCandles();
-  renderTopbar();renderChart();
-  $('history-load-status').textContent='AUTO';
-  $('history-load-note').textContent='Auto Start: memulihkan cache, memuat sejarah candle, menjalankan backtest dan menyambung data live…';
-  $('btn-load-history').textContent='Auto memuat…';
-  await loadHistoricalCandles();
-  updatePerformanceOutcomes();
-  runAiBacktest();
-  start();
-  $('history-load-note').textContent+=' Auto Start aktif; data akan dikemas kini semasa dashboard dibuka.';
+  try{
+    bind();
+    restoreCachedCandles();
+    renderTopbar();renderChart();
+    scanHistoricalSignals();
+    $('history-load-status').textContent='AUTO';
+    $('history-load-note').textContent='Auto Start: live dimulakan dahulu; sejarah dimuatkan di latar…';
+    start();
+    loadHistoricalCandles().then(()=>{
+      updatePerformanceOutcomes();
+      runAiBacktest();
+      scanHistoricalSignals();
+      $('history-load-note').textContent+=' Auto Start aktif; data sejarah dan live dikemas kini semasa dashboard dibuka.';
+    }).catch(error=>{
+      $('history-load-status').textContent='RALAT';
+      $('history-load-note').textContent='Sejarah gagal dimuat: '+error.message+'. Sambungan live masih berjalan.';
+    });
+  }catch(error){
+    console.error('GENJI Auto Start error:',error);
+    const note=document.getElementById('history-load-note');
+    if(note)note.textContent='Ralat Auto Start: '+error.message+'. Muat semula halaman.';
+  }
 }
 autoBoot();
