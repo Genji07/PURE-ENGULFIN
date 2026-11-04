@@ -992,6 +992,30 @@ function openPatternReplay(id){
   updateReplayStepLabel();
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function replayEventFor(record,context){
+  if(!Array.isArray(context)||context.length<2)return null;
+  const setupIndex=context.findIndex(c=>c.isSetup);
+  if(setupIndex<0)return null;
+  const side=String(record.side||'').toUpperCase();
+  const buy=side==='BUY',sell=side==='SELL';
+  if(!buy&&!sell)return null;
+  const stop=Number(record.stop),target=Number(record.target);
+  if(!Number.isFinite(stop)||!Number.isFinite(target))return null;
+  for(let i=setupIndex+1;i<context.length;i++){
+    const candle=context[i],hitStop=buy?Number(candle.l)<=stop:Number(candle.h)>=stop;
+    const hitTarget=buy?Number(candle.h)>=target:Number(candle.l)<=target;
+    if(hitStop||hitTarget)return {index:i,ambiguous:hitStop&&hitTarget,label:hitStop&&hitTarget?'AMBIGUOUS · STOP & TARGET':hitStop?'STOP disentuh':'TARGET disentuh',kind:hitStop&&hitTarget?'ambiguous':hitStop?'stop':'target',time:candle.t};
+  }
+  return {index:-1,label:'Belum disentuh dalam konteks replay',kind:'pending'};
+}
+function updateReplayEventLabel(record){
+  const node=$('pr-replay-event');if(!node)return;
+  const event=replayEventFor(record,activeReplayContext);
+  if(!event){node.textContent='Event: konteks candle tidak mencukupi untuk semakan';node.dataset.kind='pending';return;}
+  const visible=event.index>=0&&event.index<=activeReplayStep;
+  node.textContent=event.index<0?'Event: '+event.label:visible?'Event: '+event.label+' · Candle '+(event.index+1):'Event: menunggu candle seterusnya';
+  node.dataset.kind=visible?event.kind:'pending';
+}
 function drawPatternReplay(record,context=[]){
   const canvas=$('pr-replay-canvas'),ctx=canvas.getContext('2d');
   if(!ctx)return;
@@ -1016,6 +1040,11 @@ function drawPatternReplay(record,context=[]){
     ctx.fillStyle=color;ctx.fillRect(x-candleW/2,bodyTop,candleW,bodyHeight);
     if(c.isSetup){ctx.fillStyle='#f2cf36';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('SETUP',x,13);}
   });
+  const replayEvent=replayEventFor(record,context);
+  if(replayEvent&&replayEvent.index>=0&&replayEvent.index<bars.length){
+    const eventBar=bars[replayEvent.index],slotX=left+slot*(replayEvent.index+.5),eventY=y(Number(eventBar.c));
+    ctx.save();ctx.fillStyle=replayEvent.kind==='target'?'#19c463':replayEvent.kind==='stop'?'#e06b61':'#f2cf36';ctx.strokeStyle='#071009';ctx.lineWidth=2;ctx.beginPath();ctx.arc(slotX,eventY,7,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(replayEvent.kind==='target'?'TARGET':replayEvent.kind==='stop'?'STOP':'BOTH',slotX,Math.max(top+10,eventY-12));ctx.restore();
+  }
   levels.forEach(level=>{
     const yy=y(level.value);ctx.save();ctx.strokeStyle=level.color;ctx.fillStyle=level.color;ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.setLineDash([]);ctx.font='bold 9px system-ui';ctx.textAlign='left';ctx.fillText(level.label+' '+level.value.toFixed(2),left+4,Math.max(top+10,Math.min(bottom-3,yy-4)));ctx.restore();
   });
