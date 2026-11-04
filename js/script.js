@@ -238,6 +238,54 @@ function renderPatternStatistics() {
     return '<div class="pattern-stat-row"><div class="pattern-stat-title"><strong>'+group.name+'</strong><span class="'+group.side.toLowerCase()+'">'+group.side+'</span></div><div class="pattern-stat-metrics"><span>WIN <b class="perf-win">'+group.wins+'</b></span><span>LOSS <b class="perf-loss">'+group.losses+'</b></span><span>PENDING <b>'+group.pending+'</b></span><span>LAIN <b>'+group.other+'</b></span><span>WIN RATE <b>'+rate+'</b></span></div><div class="pattern-stat-track"><i style="width:'+(resolved?group.wins/resolved*100:0)+'%"></i></div><small>'+group.total+' rekod · '+resolved+' keputusan selesai</small></div>';
   }).join(''):'<p>Belum ada rekod simulasi BUY/SELL untuk timeframe ini. Statistik akan muncul selepas setup direkod dan dinilai.</p>';
 }
+function renderPerformanceInsight() {
+  const records=performanceRecords.filter(record=>
+    record.interval===state.interval && ['WIN','LOSS'].includes(record.outcome) && record.memoryFeatures
+  );
+  const makeGroups=(keyFn)=> {
+    const groups=new Map();
+    for(const record of records){
+      const key=keyFn(record);
+      if(!key) continue;
+      if(!groups.has(key)) groups.set(key,{key,wins:0,losses:0});
+      const group=groups.get(key);
+      if(record.outcome==='WIN') group.wins++; else group.losses++;
+    }
+    return [...groups.values()].map(group=>({...group,total:group.wins+group.losses,rate:group.wins/(group.wins+group.losses)}))
+      .filter(group=>group.total>=5)
+      .sort((a,b)=>b.rate-a.rate || b.total-a.total);
+  };
+  const patterns=makeGroups(record=>(record.pattern||record.patternType||'Pattern')+' · '+record.side);
+  const conditions=makeGroups(record=>{
+    const f=record.memoryFeatures;
+    return 'H1 '+(f.h1||'unknown')+' / M15 '+(f.m15||'unknown')+
+      ' · '+(f.nearZone?'Dekat zon':'Jauh zon')+
+      ' · '+(f.rejection?'Ada rejection':'Tiada rejection');
+  });
+  const sample=records.length;
+  $('insight-sample').textContent=sample+' sampel selesai';
+  if(sample<5){
+    $('insight-verdict').textContent='Belum cukup data. Ada '+sample+' keputusan WIN/LOSS; perlukan sekurang-kurangnya 5 rekod selesai untuk mula memaparkan insight.';
+  } else {
+    const best=patterns[0];
+    const bestCondition=conditions[0];
+    $('insight-verdict').textContent=best
+      ? 'Kumpulan pattern tertinggi dalam sampel: '+best.key+' — '+(best.rate*100).toFixed(1)+'% ('+best.wins+' WIN / '+best.losses+' LOSS).'
+      : 'Belum ada kumpulan pattern dengan 5 sampel selesai. Kumpulkan lebih banyak rekod sebelum membuat perbandingan.';
+  }
+  const rows=[];
+  if(patterns.length){
+    const best=patterns[0];
+    rows.push('<div class="insight-row"><strong>Pattern tertinggi · '+best.key+'</strong><span>'+(best.rate*100).toFixed(1)+'% WIN RATE</span><small>'+best.total+' sampel selesai · '+best.wins+' WIN · '+best.losses+' LOSS</small></div>');
+  } else rows.push('<p>Belum ada pattern yang mencapai minimum 5 sampel.</p>');
+  if(conditions.length){
+    const best=conditions[0];
+    rows.push('<div class="insight-row"><strong>Keadaan pasaran paling tinggi dalam rekod</strong><span>'+(best.rate*100).toFixed(1)+'% WIN RATE</span><small>'+best.key+' · '+best.total+' sampel · '+best.wins+' WIN / '+best.losses+' LOSS</small></div>');
+  } else rows.push('<p>Belum ada gabungan keadaan pasaran dengan minimum 5 sampel.</p>');
+  const lowSample=records.length<20;
+  rows.push('<div class="insight-note">'+(lowSample?'Amaran: jumlah keseluruhan masih kecil ('+sample+' sampel). Perbandingan boleh berubah apabila rekod bertambah.':'Semak juga jumlah sampel setiap kumpulan; kadar tinggi dengan sampel kecil mudah berubah.')+'</div>');
+  $('insight-details').innerHTML=rows.join('');
+}
 function renderPerformance() {
   const records = performanceRecords.filter(record => record.interval === state.interval);
   const wins = records.filter(record => record.outcome === 'WIN').length;
@@ -259,6 +307,7 @@ function renderPerformance() {
     return '<div class="performance-row"><div><strong>' + record.side + ' · ' + record.pattern + '</strong><small>' + date + ' · Entry ' + price + ' · ' + record.interval + '</small></div><span class="perf-status ' + record.outcome + '">' + record.outcome + '</span></div>';
   }).join('') : '<p>Belum ada rekod signal untuk timeframe ini. Dashboard mula merekod selepas signal BUY/SELL baharu disahkan.</p>';
   renderPatternStatistics();
+  renderPerformanceInsight();
 }
 const chart = {
   axisW: 74, timeH: 26, volPct: 0.18, hover: null,
