@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-historical-scanner-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-api-limit-fix-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -241,7 +241,7 @@
 
     <section class="ai-lab-card">
       <div class="ai-lab-head"><div><strong>HISTORICAL CANDLE LOADER</strong><small>Muat sejarah OHLC tambahan untuk analisis dan backtest</small></div><span id="history-load-status" class="ai-lab-pill">SEDIA</span></div>
-      <div class="history-loader-controls"><label>Jumlah candle diminta<select id="history-load-limit"><option value="500">500 candle</option><option value="1000">1,000 candle</option><option value="2000" selected>2,000 candle</option><option value="5000">5,000 candle</option></select></label><button id="btn-load-history" class="green" type="button">Muat sejarah</button></div>
+      <div class="history-loader-controls"><label>Jumlah candle diminta<select id="history-load-limit"><option value="250">250 candle</option><option value="500">500 candle</option><option value="1000" selected>1,000 candle (maksimum API)</option></select></label><button id="btn-load-history" class="green" type="button">Muat sejarah</button></div>
       <div class="history-loader-stats"><div><span>CANDLE TERSEDIA</span><b id="history-loaded-count">0</b></div><div><span>LIPUTAN MASA</span><b id="history-loaded-span">—</b></div><div><span>TIMEFRAME</span><b id="history-loaded-tf">5m</b></div></div>
       <div id="history-load-note" class="ai-lab-note">Muat sejarah tambahan untuk meluaskan sampel backtest. API mungkin mengehadkan jumlah yang dipulangkan.</div>
       <p class="ai-lab-disclaimer">Jumlah diminta bukan jaminan API akan memulangkan semuanya. Data digabungkan dengan candle sedia ada, disusun mengikut masa dan pendua dibuang. Liputan bergantung pada penyedia data.</p>
@@ -291,6 +291,6 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-historical-scanner-20261104"></script>
+<script src="js/script.js?v=genji-api-limit-fix-20261104"></script>
 </body>
 </html>
