@@ -836,6 +836,24 @@ function renderAnalysis() {
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
   $('a-pattern-history').textContent=closedEngulfings.length+' ditemui · '+(latestEngulfing?latestEngulfing.name+' · '+new Date(candles[latestEngulfing.index].t*1000).toLocaleString('ms-MY'):'Belum ada engulfing tertutup dalam data dimuatkan');
+  // Similarity sejarah: arah, jenis engulfing dan kekuatan body.
+  const patternMemoryRows=latestEngulfing?closedEngulfings.filter(p=>p.index!==latestEngulfing.index).map(p=>{
+    const c=candles[p.index],refC=candles[latestEngulfing.index];
+    const side=p.name.includes('Bullish')?'bull':'bear';
+    const refSide=latestEngulfing.name.includes('Bullish')?'bull':'bear';
+    const ratio=Math.abs(c.c-c.o)/Math.max(c.h-c.l,1e-8);
+    const refRatio=Math.abs(refC.c-refC.o)/Math.max(refC.h-refC.l,1e-8);
+    const similarity=(side===refSide?40:0)+(p.type===latestEngulfing.type?25:0)+Math.max(0,35-Math.round(Math.abs(ratio-refRatio)*100));
+    return {p,c,ratio,similarity};
+  }).filter(x=>x.similarity>=65).sort((a,b)=>b.similarity-a.similarity||b.c.t-a.c.t):[];
+  $('memory-pattern-total').textContent=String(closedEngulfings.length);
+  $('memory-pattern-matches').textContent=String(patternMemoryRows.length);
+  $('memory-pattern-verdict').textContent=latestEngulfing
+    ? 'Rujukan: '+latestEngulfing.name+'. '+patternMemoryRows.length+' pattern sejarah mempunyai persamaan sekurang-kurangnya 65%. Ini perbandingan bentuk, bukan ramalan.'
+    : 'Menunggu engulfing tertutup untuk dijadikan rujukan.';
+  $('memory-pattern-history').innerHTML=patternMemoryRows.length
+    ? patternMemoryRows.slice(0,5).map(x=>'<div class="performance-row"><div><strong>'+x.p.name+'</strong><small>'+new Date(x.c.t*1000).toLocaleString('ms-MY')+' · Body '+(x.ratio*100).toFixed(0)+'% · Persamaan '+x.similarity+'%</small></div><span class="perf-status PENDING">'+x.p.type+'</span></div>').join('')
+    : '<p>Belum ada pattern sejarah yang cukup serupa.</p>';
   const latestCandle=latestEngulfing?candles[latestEngulfing.index]:null;
   const liveReference=state.tick?.mid??candles.at(-1)?.c;
   const barsSinceEngulfing=latestEngulfing&&closedIndex!=null
