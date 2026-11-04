@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-suite-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-data-backup-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -223,9 +223,25 @@
       </div>
       <div id="ai-dashboard-reason" class="ai-lab-note">Dashboard menunggu analisis.</div>
     </section>
+
+    <section class="ai-lab-card">
+      <div class="ai-lab-head"><div><strong>GENJI DATA BACKUP & RESTORE</strong><small>Sandaran rekod AI, performance dan signal pada peranti ini</small></div><span class="ai-lab-pill">DATA CONTROL</span></div>
+      <div class="ai-backup-stats">
+        <div><span>AI LEARNING</span><b id="backup-ai-count">0</b></div>
+        <div><span>PERFORMANCE</span><b id="backup-perf-count">0</b></div>
+        <div><span>SIGNAL LOG</span><b id="backup-log-count">0</b></div>
+      </div>
+      <div class="ai-backup-actions">
+        <button id="btn-export-backup" type="button" class="green">Muat turun backup JSON</button>
+        <button id="btn-import-backup" type="button">Import backup JSON</button>
+        <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div id="backup-status" class="ai-lab-note">Data disimpan dalam browser/peranti ini. Buat backup sebelum tukar browser atau telefon.</div>
+      <p class="ai-lab-disclaimer">Import akan menggabungkan rekod yang sah dan mengelakkan ID pendua. Fail backup hanya diproses dalam browser ini; jangan kongsi fail jika ia mengandungi data peribadi.</p>
+    </section>
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-ai-suite-20261104b"></script>
+<script src="js/script.js?v=genji-data-backup-20261104"></script>
 </body>
 </html>
