@@ -27,6 +27,7 @@
   <div class="analysis-tabs" role="tablist" aria-label="Analisis GENJI">
     <button class="analysis-tab active" data-tab="pure" role="tab" aria-selected="true">PURE ENGULFING</button>
     <button class="analysis-tab" data-tab="market" role="tab" aria-selected="false">MARKET REGIME</button>
+    <button class="analysis-tab" data-tab="mtf" role="tab" aria-selected="false">MTF ALIGNMENT</button>
     <button class="analysis-tab" data-tab="reason" role="tab" aria-selected="false">REASON</button>
     <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
@@ -45,6 +46,20 @@
       <div id="regime-reason" class="regime-reason">Menunggu sekurang-kurangnya 30 candle tertutup.</div>
       <div class="regime-filter"><strong>SIGNAL FILTER</strong><span id="regime-filter-status">MENUNGGU DATA</span></div>
       <p class="regime-disclaimer">Filter ialah tapisan rule-based. Klasifikasi pasaran boleh tersilap dan bukan ramalan harga. Signal hanya dibenarkan apabila regime diklasifikasikan TRENDING; keadaan lain menghasilkan WAIT.</p>
+    </section>
+  </div>
+  <div class="analysis-pane" id="tab-mtf" role="tabpanel">
+    <section class="mtf-card">
+      <div class="mtf-head"><div><strong>GENJI MULTI-TIMEFRAME ALIGNMENT</strong><small>EMA 9/21 daripada candle tertutup</small></div><span id="mtf-status" class="mtf-pill">MENUNGGU DATA</span></div>
+      <div class="mtf-grid">
+        <div><span>H4</span><strong id="mtf-h4">—</strong></div>
+        <div><span>H1</span><strong id="mtf-h1">—</strong></div>
+        <div><span>M15</span><strong id="mtf-m15">—</strong></div>
+        <div><span>M5</span><strong id="mtf-m5">—</strong></div>
+      </div>
+      <div id="mtf-reason" class="mtf-reason">Menunggu data daripada empat timeframe.</div>
+      <div class="mtf-filter"><b>ALIGNMENT FILTER</b><span id="mtf-filter-status">MENUNGGU DATA</span></div>
+      <p class="mtf-disclaimer">ALL ALIGN bermaksud keempat-empat EMA sehala. Jika bercanggah atau data tidak cukup, sistem menahan signal kepada WAIT. Ini penapis teknikal, bukan ramalan atau jaminan hasil.</p>
     </section>
   </div>
   <div class="analysis-pane active" id="tab-pure" role="tabpanel">
