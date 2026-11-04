@@ -786,8 +786,9 @@ function buildAiLearning(){
     const id=[state.interval,c.t,pattern.name].join('_');
     current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,bodyRatio:Number(bodyRatio.toFixed(3)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
   }
-  const other=aiLearningRecords.filter(r=>r.interval!==state.interval);
-  aiLearningRecords=other.concat(current).slice(-3000);
+  const merged=new Map(aiLearningRecords.map(record=>[record.id,record]));
+  current.forEach(record=>merged.set(record.id,record));
+  aiLearningRecords=[...merged.values()].slice(-3000);
   saveAiLearning();
   return current;
 }
