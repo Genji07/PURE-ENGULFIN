@@ -836,6 +836,18 @@ function renderAnalysis() {
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
   $('a-pattern-history').textContent=closedEngulfings.length+' ditemui · '+(latestEngulfing?latestEngulfing.name+' · '+new Date(candles[latestEngulfing.index].t*1000).toLocaleString('ms-MY'):'Belum ada engulfing tertutup dalam data dimuatkan');
+  const latestCandle=latestEngulfing?candles[latestEngulfing.index]:null;
+  const liveReference=state.tick?.mid??candles.at(-1)?.c;
+  const barsSinceEngulfing=latestEngulfing&&closedIndex!=null
+    ? candles.slice(latestEngulfing.index+1,closedIndex+1).filter(c=>isClosedCandle(c,state.interval)).length
+    : null;
+  $('a-latest-engulfing').textContent=latestEngulfing?latestEngulfing.name:'TIADA REKOD';
+  $('a-latest-time').textContent=latestCandle?new Date(latestCandle.t*1000).toLocaleString('ms-MY'):'—';
+  $('a-latest-price').textContent=latestCandle?latestCandle.c.toFixed(2):'—';
+  $('a-latest-distance').textContent=latestCandle&&Number.isFinite(liveReference)?Math.abs(liveReference-latestCandle.c).toFixed(2)+' mata':'—';
+  $('a-latest-status').textContent=latestEngulfing
+    ? (barsSinceEngulfing<=3?'TERKINI':'LAMA')+' · '+barsSinceEngulfing+' candle selepasnya'
+    : 'BELUM ADA DATA';
   $('a-type').textContent=pattern?.type || (state.engDef==='both'?'BODY + FULL':state.engDef==='body'?'PURE BODY':'FULL CANDLE');
   $('a-h1').textContent=h1?.label||'MENUNGGU';
   $('a-m15').textContent=m15?.label||'MENUNGGU';
