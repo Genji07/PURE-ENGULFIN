@@ -960,6 +960,7 @@ function renderPatternReview(){
 }
 let activePatternReplayId=null;
 let activeReplayContext=[];
+let activeReplayStep=0;
 function replayContextFor(record){
   if(Array.isArray(record.replayContext)&&record.replayContext.length){
     const saved=record.replayContext.filter(c=>c&&[c.t,c.o,c.h,c.l,c.c].every(v=>Number.isFinite(Number(v)))&&Number(c.h)>Number(c.l)).map(c=>({...c,isSetup:!!c.isSetup}));
@@ -977,6 +978,7 @@ function openPatternReplay(id){
   if(!record)return;
   activePatternReplayId=id;
   activeReplayContext=replayContextFor(record);
+  activeReplayStep=0;
   const panel=$('pr-replay');
   panel.hidden=false;
   $('pr-replay-title').textContent=(record.pattern||'PATTERN')+' · '+(record.side||'—');
@@ -985,6 +987,7 @@ function openPatternReplay(id){
   $('pr-replay-values').innerHTML=[['OPEN',record.open],['HIGH',record.high],['LOW',record.low],['CLOSE',record.close]].map(([k,v])=>'<div><small>'+k+'</small><b>'+fmt(v)+'</b></div>').join('');
   $('pr-replay-meta').textContent='Body '+(Number.isFinite(Number(record.bodyRatio))?(Number(record.bodyRatio)*100).toFixed(0)+'%':'—')+' · H1 '+(record.h1||'—')+' · M15 '+(record.m15||'—')+' · Entry '+fmt(record.entry)+' · Stop '+fmt(record.stop)+' · Sasaran '+fmt(record.target)+' · Bars '+(record.bars??'—');
   drawPatternReplay(record,activeReplayContext);
+  updateReplayStepLabel();
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function drawPatternReplay(record,context=[]){
@@ -996,6 +999,7 @@ function drawPatternReplay(record,context=[]){
   let bars=context.filter(valid);
   if(!bars.length&&valid({o:record.open,h:record.high,l:record.low,c:record.close}))bars=[{o:Number(record.open),h:Number(record.high),l:Number(record.low),c:Number(record.close),isSetup:true}];
   if(!bars.length){ctx.fillStyle='#f2cf36';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('OHLC tidak lengkap untuk replay',w/2,h/2);return;}
+  bars=bars.slice(0,Math.max(1,Math.min(bars.length,activeReplayStep+1)));
   const levels=[{key:'entry',label:'ENTRY',value:Number(record.entry),color:'#f2cf36'},{key:'stop',label:'STOP',value:Number(record.stop),color:'#e06b61'},{key:'target',label:'TARGET',value:Number(record.target),color:'#19c463'}].filter(level=>Number.isFinite(level.value));
   const rawMax=Math.max(...bars.map(c=>Number(c.h))),rawMin=Math.min(...bars.map(c=>Number(c.l)));
   const max=Math.max(rawMax,...levels.map(level=>level.value)),min=Math.min(rawMin,...levels.map(level=>level.value)),range=max-min||1;
@@ -1015,10 +1019,30 @@ function drawPatternReplay(record,context=[]){
   });
   ctx.fillStyle='#a8b8a4';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(bars.length>1?'Kuning = setup · Garis = paras simulasi · Hijau = bullish · Merah = bearish':'SNAPSHOT CANDLE · Garis = paras simulasi',w/2,h-8);
 }
+function updateReplayStepLabel(){
+  const label=$('pr-replay-step');
+  if(!label)return;
+  const total=Math.max(1,activeReplayContext.length);
+  label.textContent='Candle '+Math.min(activeReplayStep+1,total)+' / '+total+(activeReplayContext.length?' · Replay berperingkat':' · Snapshot sahaja');
+  $('btn-replay-prev').disabled=activeReplayStep<=0;
+  $('btn-replay-next').disabled=activeReplayStep>=total-1;
+}
+function stepPatternReplay(delta){
+  if(!activePatternReplayId)return;
+  const record=aiLearningRecords.find(r=>r.id===activePatternReplayId);
+  if(!record)return;
+  const total=Math.max(1,activeReplayContext.length);
+  activeReplayStep=Math.max(0,Math.min(total-1,activeReplayStep+delta));
+  drawPatternReplay(record,activeReplayContext);
+  updateReplayStepLabel();
+  const current=activeReplayContext[activeReplayStep];
+  if(current){const fmt=v=>Number(v).toFixed(2);$('pr-replay-values').innerHTML=[['OPEN',current.o],['HIGH',current.h],['LOW',current.l],['CLOSE',current.c]].map(([k,v])=>'<div><small>'+k+'</small><b>'+fmt(v)+'</b></div>').join('');}
+}
 function closePatternReplay(){
   $('pr-replay').hidden=true;
   activePatternReplayId=null;
   activeReplayContext=[];
+  activeReplayStep=0;
 }
 function closePatternReplay(){
   $('pr-replay').hidden=true;
