@@ -484,7 +484,7 @@ function renderAnalysis() {
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
   $('a-signal-tf').textContent=state.interval;
-  const memoryFeatures=pattern&&candle?{
+  const memoryFeatures=pattern&&candle&&signal!=='WAIT'?{
     side:signal, patternType:pattern.type,
     h1:h1?.direction||'unknown', m15:m15?.direction||'unknown',
     bodyRatio:Number(bodyRatio.toFixed(3)),
