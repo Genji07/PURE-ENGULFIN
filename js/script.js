@@ -1325,6 +1325,8 @@ function bind() {
     openPatternReplay(decodeURIComponent(button.dataset.replayId));
   });
   $('btn-close-replay').onclick=closePatternReplay;
+  $('btn-replay-prev').onclick=()=>stepPatternReplay(-1);
+  $('btn-replay-next').onclick=()=>stepPatternReplay(1);
   renderPatternReview();
   $('btn-load-history').onclick=loadHistoricalCandles;
   renderHistoryLoader();
