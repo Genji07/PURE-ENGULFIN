@@ -218,6 +218,26 @@ function updatePerformanceOutcomes() {
   }
   if (changed) savePerformanceRecords();
 }
+function renderPatternStatistics() {
+  const records=performanceRecords.filter(record=>record.interval===state.interval);
+  const groups=new Map();
+  for(const record of records){
+    const key=(record.patternType||record.pattern||'Pattern tidak diketahui')+' · '+record.side;
+    if(!groups.has(key)) groups.set(key,{name:record.pattern||record.patternType||'Pattern',type:record.patternType||'—',side:record.side,total:0,wins:0,losses:0,pending:0,other:0});
+    const group=groups.get(key);group.total++;
+    if(record.outcome==='WIN')group.wins++;
+    else if(record.outcome==='LOSS')group.losses++;
+    else if(record.outcome==='PENDING')group.pending++;
+    else group.other++;
+  }
+  const sorted=[...groups.values()].sort((a,b)=>(b.wins+b.losses)-(a.wins+a.losses)||b.total-a.total);
+  $('pattern-stats-scope').textContent=state.interval+' · '+records.length+' signal';
+  $('pattern-stats').innerHTML=sorted.length?sorted.map(group=>{
+    const resolved=group.wins+group.losses;
+    const rate=resolved?(group.wins/resolved*100).toFixed(1)+'%':'—';
+    return '<div class="pattern-stat-row"><div class="pattern-stat-title"><strong>'+group.name+'</strong><span class="'+group.side.toLowerCase()+'">'+group.side+'</span></div><div class="pattern-stat-metrics"><span>WIN <b class="perf-win">'+group.wins+'</b></span><span>LOSS <b class="perf-loss">'+group.losses+'</b></span><span>PENDING <b>'+group.pending+'</b></span><span>LAIN <b>'+group.other+'</b></span><span>WIN RATE <b>'+rate+'</b></span></div><div class="pattern-stat-track"><i style="width:'+(resolved?group.wins/resolved*100:0)+'%"></i></div><small>'+group.total+' rekod · '+resolved+' keputusan selesai</small></div>';
+  }).join(''):'<p>Belum ada rekod simulasi BUY/SELL untuk timeframe ini. Statistik akan muncul selepas setup direkod dan dinilai.</p>';
+}
 function renderPerformance() {
   const records = performanceRecords.filter(record => record.interval === state.interval);
   const wins = records.filter(record => record.outcome === 'WIN').length;
@@ -238,6 +258,7 @@ function renderPerformance() {
     const price = Number(record.entry).toFixed(2);
     return '<div class="performance-row"><div><strong>' + record.side + ' · ' + record.pattern + '</strong><small>' + date + ' · Entry ' + price + ' · ' + record.interval + '</small></div><span class="perf-status ' + record.outcome + '">' + record.outcome + '</span></div>';
   }).join('') : '<p>Belum ada rekod signal untuk timeframe ini. Dashboard mula merekod selepas signal BUY/SELL baharu disahkan.</p>';
+  renderPatternStatistics();
 }
 const chart = {
   axisW: 74, timeH: 26, volPct: 0.18, hover: null,
