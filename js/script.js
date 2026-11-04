@@ -807,7 +807,8 @@ function buildAiLearning(){
     const bodyRatio=Math.abs(c.c-c.o)/Math.max(c.h-c.l,1e-8);
     const result=evaluateHistoricalPattern(candles,i,side,state.interval);
     const id=[state.interval,c.t,pattern.name].join('_');
-    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,patternType:pattern.type,open:c.o,high:c.h,low:c.l,close:c.c,bodyRatio:Number(bodyRatio.toFixed(3)),range:Number((c.h-c.l).toFixed(4)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
+    const replayContext=candles.slice(Math.max(0,i-8),Math.min(candles.length,i+9)).map((bar,index)=>({t:Number(bar.t),o:Number(bar.o),h:Number(bar.h),l:Number(bar.l),c:Number(bar.c),isSetup:Math.max(0,i-8)+index===i}));
+    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,patternType:pattern.type,open:c.o,high:c.h,low:c.l,close:c.c,bodyRatio:Number(bodyRatio.toFixed(3)),range:Number((c.h-c.l).toFixed(4)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt,replayContext});
   }
   const merged=new Map(aiLearningRecords.map(record=>[record.id,record]));
   current.forEach(record=>merged.set(record.id,record));
@@ -960,6 +961,10 @@ function renderPatternReview(){
 let activePatternReplayId=null;
 let activeReplayContext=[];
 function replayContextFor(record){
+  if(Array.isArray(record.replayContext)&&record.replayContext.length){
+    const saved=record.replayContext.filter(c=>c&&[c.t,c.o,c.h,c.l,c.c].every(v=>Number.isFinite(Number(v)))&&Number(c.h)>Number(c.l)).map(c=>({...c,isSetup:!!c.isSetup}));
+    if(saved.length)return saved;
+  }
   if(record.interval!==state.interval||!Array.isArray(state.candles)||!state.candles.length)return [];
   const seconds=({ '1m':60,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400 })[record.interval]||300;
   let best=-1,distance=Infinity;
