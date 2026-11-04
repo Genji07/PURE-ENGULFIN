@@ -5,7 +5,7 @@ const APP_FILES = [
   "./css/style.css",
   "./css/style.css?v=genji-api-limit-fix-20261104",
   "./js/script.js",
-  "./js/script.js?v=genji-latest-engulfing-20261105",
+  "./js/script.js?v=genji-pattern-memory-20261105",
   "./icons/genji-icon.svg"
 ];
 
