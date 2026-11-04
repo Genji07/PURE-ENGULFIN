@@ -402,6 +402,18 @@ function renderAnalysis() {
   const supportRejection=!!(candle && nearestZones.support && candle.l<=nearestZones.support.high && candle.c>nearestZones.support.mid);
   const resistanceRejection=!!(candle && nearestZones.resistance && candle.h>=nearestZones.resistance.low && candle.c<nearestZones.resistance.mid);
   const zoneContext=patternSide==='bull'?(nearSupport?'Harga berhampiran support. ':'')+(supportRejection?'Candle menunjukkan rejection ke atas di support.':''):patternSide==='bear'?(nearResistance?'Harga berhampiran resistance. ':'')+(resistanceRejection?'Candle menunjukkan rejection ke bawah di resistance.':''):'';
+
+  // Confirmation Score: weighted technical-rule checklist, not a win probability.
+  const scoreParts=[
+    {label:'Engulfing',score:pattern && pattern.name.includes('Engulfing')?25:0,max:25},
+    {label:'Trend H1 + M15',score:patternSide?((h1?.direction===patternSide?10:0)+(m15?.direction===patternSide?10:0)):0,max:20},
+    {label:'Support / Resistance',score:patternSide==='bull'?(nearSupport?20:nearestZones.support?10:0):patternSide==='bear'?(nearResistance?20:nearestZones.resistance?10:0):0,max:20},
+    {label:'Rejection',score:patternSide==='bull'?(supportRejection?15:0):patternSide==='bear'?(resistanceRejection?15:0):0,max:15},
+    {label:'Kekuatan body',score:candle?Math.min(10,Math.round(bodyRatio/0.5*10)):0,max:10},
+    {label:'Candle tertutup',score:candle?10:0,max:10}
+  ];
+  const confirmationScore=scoreParts.reduce((sum,part)=>sum+part.score,0);
+  const scoreGrade=!candle?'MENUNGGU DATA':!pattern?'TIADA SETUP ENGULFING':confirmationScore>=75?'KUAT':confirmationScore>=55?'SEDERHANA':'LEMAH';
   const reasons=[];
   let signal='WAIT', detail='Menunggu pattern engulfing yang lengkap dan pengesahan trend H1/M15.';
   if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
@@ -427,6 +439,11 @@ function renderAnalysis() {
   $('a-candle').textContent=candle?'CLOSED':'MENUNGGU';
   $('a-body').textContent=candle?(bodyRatio*100).toFixed(0)+'%':'—';
   renderZones();
+  $('score-total').textContent=String(confirmationScore);
+  $('score-bar').style.width=confirmationScore+'%';
+  $('score-grade').textContent=scoreGrade;
+  $('score-grade').className='score-grade '+(confirmationScore>=75&&pattern?'strong':confirmationScore>=55&&pattern?'medium':'weak');
+  $('score-breakdown').innerHTML=scoreParts.map(part=>'<div class="score-line"><span>'+part.label+'</span><b>'+part.score+'/'+part.max+'</b></div>').join('');
   $('a-reason').innerHTML=reasons.map(r=>'<div class="reason-item '+(r.ok?'pass':'fail')+'">'+(r.ok?'✓ ':'! ')+r.text+'</div>').join('');
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
