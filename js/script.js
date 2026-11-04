@@ -927,8 +927,46 @@ function renderPatternReview(){
   $('pr-count').textContent=rows.length+' REKOD';$('pr-total').textContent=String(rows.length);$('pr-wins').textContent=String(wins);$('pr-losses').textContent=String(losses);$('pr-rate').textContent=done?(wins/done*100).toFixed(1)+'%':'—';
   $('pr-list').innerHTML=rows.length?rows.slice(0,40).map(r=>{
     const fmt=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):'—';
-    return '<article class="pr-record"><div class="pr-record-head"><div><strong>'+r.pattern+' · '+r.side+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · '+r.interval+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div><div class="pr-candle-grid"><div><small>OPEN</small><b>'+fmt(r.open)+'</b></div><div><small>HIGH</small><b>'+fmt(r.high)+'</b></div><div><small>LOW</small><b>'+fmt(r.low)+'</b></div><div><small>CLOSE</small><b>'+fmt(r.close)+'</b></div></div><div class="pr-meta">Body '+(Number.isFinite(Number(r.bodyRatio))?(r.bodyRatio*100).toFixed(0)+'%':'—')+' · H1 '+(r.h1||'—')+' · M15 '+(r.m15||'—')+' · Bars '+(r.bars??'—')+'</div><div class="pr-meta">Entry '+fmt(r.entry)+' · Stop '+fmt(r.stop)+' · Sasaran simulasi '+fmt(r.target)+'</div></article>';
+    return '<article class="pr-record"><div class="pr-record-head"><div><strong>'+r.pattern+' · '+r.side+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · '+r.interval+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div><div class="pr-candle-grid"><div><small>OPEN</small><b>'+fmt(r.open)+'</b></div><div><small>HIGH</small><b>'+fmt(r.high)+'</b></div><div><small>LOW</small><b>'+fmt(r.low)+'</b></div><div><small>CLOSE</small><b>'+fmt(r.close)+'</b></div></div><div class="pr-meta">Body '+(Number.isFinite(Number(r.bodyRatio))?(r.bodyRatio*100).toFixed(0)+'%':'—')+' · H1 '+(r.h1||'—')+' · M15 '+(r.m15||'—')+' · Bars '+(r.bars??'—')+'</div><div class="pr-meta">Entry '+fmt(r.entry)+' · Stop '+fmt(r.stop)+' · Sasaran simulasi '+fmt(r.target)+'</div><button type="button" class="pr-replay-btn green" data-replay-id="'+encodeURIComponent(r.id)+'">▶ Replay candle ini</button></article>';
   }).join(''):'<p>Tiada rekod untuk pilihan tapisan ini. Muat sejarah candle dan jalankan analisis AI dahulu.</p>';
+}
+let activePatternReplayId=null;
+function openPatternReplay(id){
+  const record=aiLearningRecords.find(r=>r.id===id);
+  if(!record)return;
+  activePatternReplayId=id;
+  const panel=$('pr-replay');
+  panel.hidden=false;
+  $('pr-replay-title').textContent=(record.pattern||'PATTERN')+' · '+(record.side||'—');
+  $('pr-replay-subtitle').textContent=new Date(Number(record.time)*1000).toLocaleString('ms-MY')+' · '+(record.interval||'—')+' · '+(record.outcome||'PENDING');
+  const fmt=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):'—';
+  $('pr-replay-values').innerHTML=[['OPEN',record.open],['HIGH',record.high],['LOW',record.low],['CLOSE',record.close]].map(([k,v])=>'<div><small>'+k+'</small><b>'+fmt(v)+'</b></div>').join('');
+  $('pr-replay-meta').textContent='Body '+(Number.isFinite(Number(record.bodyRatio))?(Number(record.bodyRatio)*100).toFixed(0)+'%':'—')+' · H1 '+(record.h1||'—')+' · M15 '+(record.m15||'—')+' · Entry '+fmt(record.entry)+' · Stop '+fmt(record.stop)+' · Sasaran '+fmt(record.target)+' · Bars '+(record.bars??'—');
+  drawPatternReplay(record);
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function drawPatternReplay(record){
+  const canvas=$('pr-replay-canvas'),ctx=canvas.getContext('2d');
+  if(!ctx)return;
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);ctx.fillStyle='#071009';ctx.fillRect(0,0,w,h);
+  const values=[Number(record.high),Number(record.low),Number(record.open),Number(record.close)];
+  if(!values.every(Number.isFinite)||values[0]<=values[1]){
+    ctx.fillStyle='#f2cf36';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('OHLC tidak lengkap untuk replay',w/2,h/2);return;
+  }
+  const pad=32,top=Math.max(12,pad),bottom=h-pad;
+  const max=values[0],min=values[1],range=max-min||1;
+  const y=v=>top+(max-v)/range*(bottom-top);
+  ctx.strokeStyle='#29452d';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const yy=top+(bottom-top)*i/4;ctx.beginPath();ctx.moveTo(70,yy);ctx.lineTo(w-70,yy);ctx.stroke();const price=max-range*i/4;ctx.fillStyle='#a8b8a4';ctx.font='12px system-ui';ctx.textAlign='left';ctx.fillText(price.toFixed(2),w-62,yy-5);}
+  const bullish=Number(record.close)>=Number(record.open),color=bullish?'#19c463':'#f2cf36',x=w/2,bodyTop=Math.min(y(record.open),y(record.close)),bodyHeight=Math.max(3,Math.abs(y(record.open)-y(record.close)));
+  ctx.strokeStyle=color;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x,y(record.high));ctx.lineTo(x,y(record.low));ctx.stroke();
+  ctx.fillStyle=color;ctx.fillRect(x-22,bodyTop,44,bodyHeight);
+  ctx.fillStyle='#f3f8ef';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText(bullish?'BULLISH CANDLE':'BEARISH CANDLE',x,h-8);
+}
+function closePatternReplay(){
+  $('pr-replay').hidden=true;
+  activePatternReplayId=null;
 }
 function exportPatternReviewCsv(){
   const tf=$('pr-filter-tf').value,outcome=$('pr-filter-outcome').value,side=$('pr-filter-side').value;
@@ -1200,6 +1238,12 @@ function bind() {
   $('pr-filter-outcome').onchange=renderPatternReview;
   $('pr-filter-side').onchange=renderPatternReview;
   $('btn-export-review').onclick=exportPatternReviewCsv;
+  $('pr-list').addEventListener('click',event=>{
+    const button=event.target.closest('[data-replay-id]');
+    if(!button)return;
+    openPatternReplay(decodeURIComponent(button.dataset.replayId));
+  });
+  $('btn-close-replay').onclick=closePatternReplay;
   renderPatternReview();
   $('btn-load-history').onclick=loadHistoricalCandles;
   renderHistoryLoader();
