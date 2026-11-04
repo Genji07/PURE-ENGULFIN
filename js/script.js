@@ -807,7 +807,7 @@ function buildAiLearning(){
     const bodyRatio=Math.abs(c.c-c.o)/Math.max(c.h-c.l,1e-8);
     const result=evaluateHistoricalPattern(candles,i,side,state.interval);
     const id=[state.interval,c.t,pattern.name].join('_');
-    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,bodyRatio:Number(bodyRatio.toFixed(3)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
+    current.push({id,interval:state.interval,time:c.t,side,pattern:pattern.name,patternType:pattern.type,bodyRatio:Number(bodyRatio.toFixed(3)),range:Number((c.h-c.l).toFixed(4)),h1:state.trendH1?.direction||'unknown',m15:state.trendM15?.direction||'unknown',outcome:result.outcome,entry:result.entry,stop:result.stop,target:result.target,bars:result.bars,resolvedAt:result.resolvedAt});
   }
   const merged=new Map(aiLearningRecords.map(record=>[record.id,record]));
   current.forEach(record=>merged.set(record.id,record));
@@ -816,6 +816,31 @@ function buildAiLearning(){
   renderBackupStats();
   return current;
 }
+
+function renderPatternLearningPro(context){
+  if(!$('plp-status'))return;
+  const pattern=context?.pattern,candle=context?.candle;
+  const side=pattern?.name.includes('Bullish')?'BUY':pattern?.name.includes('Bearish')?'SELL':null;
+  const bodyRatio=candle?Math.abs(candle.c-candle.o)/Math.max(candle.h-candle.l,1e-8):null;
+  const signal=context?.signal||'WAIT';
+  const all=aiLearningRecords.filter(r=>r.interval===state.interval);
+  const matches=side&&pattern?all.filter(r=>r.side===side&&r.pattern===pattern.name&&Number.isFinite(r.bodyRatio)&&Math.abs(r.bodyRatio-bodyRatio)<=0.15):[];
+  const resolved=matches.filter(r=>['WIN','LOSS'].includes(r.outcome));
+  const wins=resolved.filter(r=>r.outcome==='WIN').length,losses=resolved.filter(r=>r.outcome==='LOSS').length,other=matches.length-resolved.length;
+  $('plp-samples').textContent=String(matches.length);$('plp-wins').textContent=String(wins);$('plp-losses').textContent=String(losses);$('plp-other').textContent=String(other);
+  $('plp-signal').textContent=signal;$('plp-signal').className=signal==='BUY'?'plp-buy':signal==='SELL'?'plp-sell':'plp-wait';
+  $('plp-status').textContent=!candle?'MENUNGGU DATA':!pattern?'TIADA ENGULFING':matches.length>=3?'PADANAN DIJUMPAI':'KUMPUL SAMPEL';
+  let summary='Belum ada setup engulfing tertutup untuk dibandingkan.';
+  if(pattern&&candle)summary=pattern.name+' · '+state.interval+' · Body '+(bodyRatio*100).toFixed(0)+'%. '+matches.length+' rekod sejarah yang hampir serupa ditemui.';
+  $('plp-reason').textContent=summary;
+  const reasons=(context?.checks||[]).map(x=>'<div class="plp-reason-row '+(x.ok?'pass':'fail')+'"><b>'+(x.ok?'✓':'!')+'</b><span>'+x.label+'</span><small>'+(x.ok?'LULUS':'BELUM LULUS')+'</small></div>');
+  if(signal==='WAIT'&&context?.detail)reasons.unshift('<div class="plp-reason-row fail"><b>!</b><span>'+context.detail+'</span><small>WAIT</small></div>');
+  $('plp-reasons').innerHTML=reasons.length?reasons.join(''):'<p>Menunggu data confirmation.</p>';
+  $('plp-history').innerHTML=matches.length?matches.slice().sort((a,b)=>b.time-a.time).slice(0,8).map(r=>'<div class="plp-history-row"><div><strong>'+r.pattern+' · '+r.side+'</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Body '+(r.bodyRatio*100).toFixed(0)+'% · '+r.interval+'</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Tiada rekod sepadan. Muat lebih banyak candle sejarah untuk menambah sampel.</p>';
+  if(matches.length>0&&matches.length<3)$('plp-reason').textContent+=' Sampel belum cukup untuk ringkasan (perlukan sekurang-kurangnya 3).';
+  if(matches.length>=3)$('plp-reason').textContent+=' Ringkasan sejarah: '+wins+' WIN, '+losses+' LOSS dan '+other+' keputusan lain/belum selesai. Ini rekod lampau, bukan ramalan.';
+}
+
 function renderAiLab(context){
   if(!document.getElementById('tab-ailab'))return;
   const current=state.candles.filter(c=>isClosedCandle(c,state.interval));
@@ -866,6 +891,7 @@ function renderAiLab(context){
   $('ai-dash-score').textContent=Number.isFinite(context?.score)?context.score+'/100':'—';
   $('ai-dash-bars').textContent=current.length+' candle tertutup';
   $('ai-dashboard-reason').textContent=context?.detail||'Menunggu analisis terkini.';
+  renderPatternLearningPro(context);
 }
 let lastBacktestResults=[];
 function runAiBacktest(){
