@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=tab-flow-no-volume-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-suite-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -34,6 +34,7 @@
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
     <button class="analysis-tab" data-tab="memory" role="tab" aria-selected="false">AI MEMORY</button>
     <button class="analysis-tab" data-tab="log" role="tab" aria-selected="false">LOG</button>
+    <button class="analysis-tab" data-tab="ailab" role="tab" aria-selected="false">AI LAB</button>
   </div>
   <div class="analysis-pane" id="tab-market" role="tabpanel">
     <section class="regime-card">
@@ -163,8 +164,68 @@
     <div class="performance-history-title">Rekod signal terkini</div>
     <div id="perf-history" class="performance-history"><p>Belum ada rekod signal. Dashboard mula merekod selepas signal BUY/SELL baharu disahkan.</p></div>
   </div>
+
+  <div class="analysis-pane" id="tab-ailab" role="tabpanel">
+    <section class="ai-lab-card">
+      <div class="ai-lab-head"><div><strong>GENJI AI LEARNING SYSTEM</strong><small>Pembelajaran pattern daripada candle tertutup dan keputusan simulasi</small></div><span id="ai-learning-status" class="ai-lab-pill">SEDIA</span></div>
+      <div class="ai-lab-stats">
+        <div><span>SAMPEL DIKAJI</span><b id="ai-samples">0</b></div>
+        <div><span>WIN SIMULASI</span><b id="ai-wins">0</b></div>
+        <div><span>LOSS SIMULASI</span><b id="ai-losses">0</b></div>
+        <div><span>PADANAN SERUPA</span><b id="ai-matches">0</b></div>
+      </div>
+      <div class="ai-lab-note" id="ai-learning-note">Menunggu pattern engulfing pada candle tertutup.</div>
+      <div class="ai-lab-subtitle">Pembelajaran terkini</div>
+      <div id="ai-learning-history" class="ai-learning-history"><p>Rekod pembelajaran akan muncul selepas data candle dianalisis.</p></div>
+      <p class="ai-lab-disclaimer">Modul ini mengira persamaan ciri dan hasil simulasi sejarah secara rule-based. Ia bukan model AI terlatih, bukan ramalan dan bukan jaminan prestasi.</p>
+    </section>
+
+    <section class="ai-lab-card">
+      <div class="ai-lab-head"><div><strong>2 · SIGNAL QUALITY FILTER</strong><small>Semakan syarat teknikal sebelum signal diklasifikasikan</small></div><span id="ai-quality-state" class="ai-lab-pill">WAIT</span></div>
+      <div id="ai-quality-checks" class="ai-quality-checks"><p>Menunggu data analisis.</p></div>
+      <p class="ai-lab-disclaimer">Senarai semak menerangkan sebab sistem menerima atau menahan signal. Ia tidak mengukur kebarangkalian menang.</p>
+    </section>
+
+    <section class="ai-lab-card">
+      <div class="ai-lab-head"><div><strong>3 · SMART ENTRY ANALYSIS</strong><small>Paras rujukan simulasi daripada candle pattern terakhir</small></div><span id="ai-entry-side" class="ai-lab-pill">TIADA SETUP</span></div>
+      <div class="ai-entry-grid">
+        <div><span>RUJUKAN CLOSE</span><b id="ai-entry-price">—</b></div>
+        <div><span>INVALIDATION</span><b id="ai-entry-stop">—</b></div>
+        <div><span>JARAK RISIKO</span><b id="ai-entry-risk">—</b></div>
+        <div><span>SIMULASI 1R</span><b id="ai-entry-1r">—</b></div>
+        <div><span>SIMULASI 2R</span><b id="ai-entry-2r">—</b></div>
+        <div><span>RETEST ZONE</span><b id="ai-entry-retest">—</b></div>
+      </div>
+      <div id="ai-entry-reason" class="ai-lab-note">Menunggu pattern untuk dianalisis.</div>
+      <p class="ai-lab-disclaimer">Semua paras ialah pengiraan pendidikan berdasarkan candle sejarah, bukan arahan entry, stop-loss atau take-profit. Pergerakan sebenar boleh berbeza.</p>
+    </section>
+
+    <section class="ai-lab-card">
+      <div class="ai-lab-head"><div><strong>4 · HISTORICAL BACKTEST</strong><small>Ujian rule pattern pada sejarah candle yang berjaya dimuatkan</small></div><span id="ai-backtest-status" class="ai-lab-pill">BELUM DIUJI</span></div>
+      <div class="ai-backtest-controls"><label>Tempoh ujian<select id="ai-backtest-range"><option value="7">7 hari terakhir</option><option value="30" selected>30 hari terakhir</option><option value="all">Semua data tersedia</option></select></label><button id="btn-run-backtest" class="green" type="button">Jalankan backtest</button></div>
+      <div class="ai-lab-stats">
+        <div><span>SETUP</span><b id="bt-total">0</b></div>
+        <div><span>WIN</span><b id="bt-wins">0</b></div>
+        <div><span>LOSS</span><b id="bt-losses">0</b></div>
+        <div><span>WIN RATE</span><b id="bt-rate">—</b></div>
+      </div>
+      <div id="ai-backtest-note" class="ai-lab-note">Tekan Jalankan backtest untuk menguji data candle yang tersedia.</div>
+      <p class="ai-lab-disclaimer">Backtest menggunakan candle yang dimuatkan dalam browser sahaja, entry close signal, invalidation pada high/low signal, sasaran 1R dan maksimum 5 candle tertutup. Jika sejarah tidak meliputi 30 hari penuh, keputusan hanya untuk tempoh data yang ada. Spread, slippage dan komisen tidak dimasukkan.</p>
+    </section>
+
+    <section class="ai-lab-card">
+      <div class="ai-lab-head"><div><strong>5 · AI DASHBOARD</strong><small>Ringkasan keadaan sistem dan sebab keputusan terkini</small></div><span id="ai-dashboard-signal" class="ai-lab-pill">WAIT</span></div>
+      <div class="ai-dashboard-grid">
+        <div><span>MARKET REGIME</span><b id="ai-dash-regime">—</b></div>
+        <div><span>MTF ALIGNMENT</span><b id="ai-dash-mtf">—</b></div>
+        <div><span>CONFIRMATION</span><b id="ai-dash-score">—</b></div>
+        <div><span>DATA CANDLE</span><b id="ai-dash-bars">—</b></div>
+      </div>
+      <div id="ai-dashboard-reason" class="ai-lab-note">Dashboard menunggu analisis.</div>
+    </section>
+  </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=no-volume-20261104"></script>
+<script src="js/script.js?v=genji-ai-suite-20261104"></script>
 </body>
 </html>
