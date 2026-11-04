@@ -14,9 +14,63 @@ function readPerformanceRecords() {
   } catch (_) { return []; }
 }
 let performanceRecords = readPerformanceRecords();
+const alertState = { soundEnabled:false, notifyEnabled:false, lastSignalKey:'', lastScoreKey:'', history:[], audioContext:null };
 function savePerformanceRecords() {
   try { localStorage.setItem(PERFORMANCE_KEY, JSON.stringify(performanceRecords.slice(-500))); }
   catch (error) { console.warn('GENJI: rekod performance tidak dapat disimpan', error); }
+}
+function alertReasonText(signal, detail, scoreGrade) {
+  return signal + ' · ' + detail + ' · Skor ' + scoreGrade;
+}
+function playSignalTone(signal) {
+  if (!alertState.soundEnabled) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!alertState.audioContext) alertState.audioContext = new AudioCtx();
+    const ctx = alertState.audioContext;
+    if (ctx.state === 'suspended') ctx.resume();
+    const notes = signal === 'BUY' ? [880,1175] : [440,330];
+    notes.forEach((frequency,index) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001,ctx.currentTime + index*0.16);
+      gain.gain.exponentialRampToValueAtTime(0.16,ctx.currentTime + index*0.16 + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime + index*0.16 + 0.18);
+      oscillator.connect(gain); gain.connect(ctx.destination);
+      oscillator.start(ctx.currentTime + index*0.16);
+      oscillator.stop(ctx.currentTime + index*0.16 + 0.2);
+    });
+  } catch (error) { console.warn('GENJI: audio alert tidak tersedia',error); }
+}
+function pushSignalAlert(signal, candle, detail, scoreGrade) {
+  if (!candle) return;
+  const key=[state.interval,candle.t,signal].join('_');
+  if (alertState.lastSignalKey !== key) {
+    alertState.lastSignalKey=key;
+    const message=alertReasonText(signal,detail,scoreGrade);
+    const item={signal,time:candle.t,message};
+    alertState.history.unshift(item);
+    alertState.history=alertState.history.slice(0,5);
+    $('alert-latest').textContent=message;
+    $('alert-state').textContent=signal==='WAIT'?'MENUNGGU / WAIT':'SIGNAL '+signal;
+    $('alert-history').innerHTML=alertState.history.map(entry=>
+      '<div class="alert-row"><strong class="'+entry.signal.toLowerCase()+'">'+entry.signal+'</strong><span>'+new Date(entry.time*1000).toLocaleString('ms-MY')+'</span><small>'+entry.message+'</small></div>'
+    ).join('');
+    if (signal==='BUY'||signal==='SELL') {
+      playSignalTone(signal);
+      if (alertState.notifyEnabled && 'Notification' in window && Notification.permission==='granted') {
+        try { new Notification('GENJI XAUUSD · '+signal,{body:message,tag:'genji-'+key}); } catch (_) {}
+      }
+    }
+  }
+  const scoreKey=[state.interval,candle.t,scoreGrade].join('_');
+  if (alertState.lastScoreKey && alertState.lastScoreKey.split('_').slice(0,2).join('_')===[state.interval,String(candle.t)].join('_') && alertState.lastScoreKey!==scoreKey) {
+    $('alert-state').textContent='SKOR BERUBAH · '+scoreGrade;
+  }
+  alertState.lastScoreKey=scoreKey;
 }
 function registerPerformanceSignal(signal, candle, pattern, features) {
   if (!candle || !pattern || !['BUY','SELL'].includes(signal)) return;
@@ -484,6 +538,7 @@ function renderAnalysis() {
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
   $('a-signal-tf').textContent=state.interval;
+  pushSignalAlert(signal,candle,detail,scoreGrade);
   const memoryFeatures=pattern&&candle&&signal!=='WAIT'?{
     side:signal, patternType:pattern.type,
     h1:h1?.direction||'unknown', m15:m15?.direction||'unknown',
@@ -666,6 +721,33 @@ function pointerPosition(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function bind() {
+  $('btn-alert-sound').onclick = () => {
+    alertState.soundEnabled=!alertState.soundEnabled;
+    if (alertState.soundEnabled) {
+      try {
+        const AudioCtx=window.AudioContext||window.webkitAudioContext;
+        if (AudioCtx && !alertState.audioContext) alertState.audioContext=new AudioCtx();
+        if (alertState.audioContext?.state==='suspended') alertState.audioContext.resume();
+        $('btn-alert-sound').textContent='Bunyi: ON';
+      } catch (_) { alertState.soundEnabled=false; $('btn-alert-sound').textContent='Bunyi: TIDAK SOKONG'; }
+    } else $('btn-alert-sound').textContent='Bunyi: OFF';
+    $('btn-alert-sound').setAttribute('aria-pressed',String(alertState.soundEnabled));
+  };
+  $('btn-alert-notify').onclick = async () => {
+    if (!('Notification' in window)) {
+      $('btn-alert-notify').textContent='Notifikasi: TIDAK SOKONG';
+      return;
+    }
+    if (Notification.permission==='granted') {
+      alertState.notifyEnabled=!alertState.notifyEnabled;
+    } else if (Notification.permission!=='denied') {
+      const permission=await Notification.requestPermission();
+      alertState.notifyEnabled=permission==='granted';
+    } else alertState.notifyEnabled=false;
+    $('btn-alert-notify').textContent='Notifikasi: '+(alertState.notifyEnabled?'ON':'OFF');
+    $('btn-alert-notify').setAttribute('aria-pressed',String(alertState.notifyEnabled));
+  };
+
   $('btn-clear-performance').onclick = () => {
     if (!confirm('Padam semua rekod performance yang disimpan pada peranti ini?')) return;
     performanceRecords = [];
