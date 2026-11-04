@@ -229,6 +229,7 @@
       <div id="pr-replay" class="pr-replay" hidden>
         <div class="pr-replay-head"><div><strong id="pr-replay-title">PATTERN REPLAY</strong><small id="pr-replay-subtitle">Snapshot candle sejarah</small></div><button id="btn-close-replay" type="button" class="ghost">Tutup</button></div>
         <canvas id="pr-replay-canvas" width="640" height="220" aria-label="Paparan candle sejarah pilihan"></canvas>\n        <div class="pr-replay-controls"><button id="btn-replay-prev" type="button" class="ghost" disabled>← Candle sebelum</button><strong id="pr-replay-step">Candle 1 / 1</strong><button id="btn-replay-next" type="button" class="green">Candle seterusnya →</button></div>
+        <div class="pr-replay-timeline"><label for="replay-scrubber">Garis masa replay</label><input id="replay-scrubber" type="range" min="0" max="0" value="0" step="1" disabled><small id="pr-replay-time">Masa candle tidak tersedia</small></div>
         <div class="pr-replay-auto"><button id="btn-replay-auto" type="button" class="green">▶ Auto replay</button><label>Kelajuan<select id="replay-speed"><option value="1500">Perlahan · 1.5s</option><option value="1000" selected>Normal · 1s</option><option value="500">Pantas · 0.5s</option></select></label></div>
         <div id="pr-replay-values" class="pr-candle-grid"></div>
         <div id="pr-replay-meta" class="pr-meta"></div>
