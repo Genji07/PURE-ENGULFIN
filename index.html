@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-replay-levels-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-replay-step-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -228,10 +228,10 @@
       <div class="pr-actions"><button id="btn-export-review" class="green" type="button">Eksport rekod CSV</button></div>
       <div id="pr-replay" class="pr-replay" hidden>
         <div class="pr-replay-head"><div><strong id="pr-replay-title">PATTERN REPLAY</strong><small id="pr-replay-subtitle">Snapshot candle sejarah</small></div><button id="btn-close-replay" type="button" class="ghost">Tutup</button></div>
-        <canvas id="pr-replay-canvas" width="640" height="220" aria-label="Paparan candle sejarah pilihan"></canvas>
+        <canvas id="pr-replay-canvas" width="640" height="220" aria-label="Paparan candle sejarah pilihan"></canvas>\n        <div class="pr-replay-controls"><button id="btn-replay-prev" type="button" class="ghost" disabled>← Candle sebelum</button><strong id="pr-replay-step">Candle 1 / 1</strong><button id="btn-replay-next" type="button" class="green">Candle seterusnya →</button></div>
         <div id="pr-replay-values" class="pr-candle-grid"></div>
         <div id="pr-replay-meta" class="pr-meta"></div>
-        <p class="ai-lab-disclaimer">Konteks sehingga 8 candle sebelum dan 8 selepas setup disimpan bersama rekod AI baharu. Garis ENTRY, STOP dan TARGET menunjukkan paras simulasi tersimpan; candle setup ditanda kuning. Rekod lama boleh menggunakan sejarah timeframe semasa atau snapshot OHLC.</p>
+        <p class="ai-lab-disclaimer">Gunakan butang Candle sebelum/seterusnya untuk melihat sejarah satu demi satu. Konteks sehingga 8 candle sebelum dan 8 selepas setup disimpan bersama rekod AI baharu. Garis ENTRY, STOP dan TARGET menunjukkan paras simulasi tersimpan; candle setup ditanda kuning. Rekod lama boleh menggunakan sejarah timeframe semasa atau snapshot OHLC.</p>
       </div>
       <div id="pr-list" class="pr-list"><p>Rekod review akan muncul selepas sejarah candle dianalisis.</p></div>
       <p class="ai-lab-disclaimer">*Win rate hanya mengira WIN dan LOSS simulasi yang selesai. Keputusan AMBIGUOUS, EXPIRED, PENDING dan INVALID tidak dikira. Rekod lama yang dibuat sebelum kemas kini mungkin tiada nilai OHLC penuh.</p>
