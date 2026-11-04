@@ -6,6 +6,97 @@ const state = {
   candleError: null, tickError: null, patterns: [], trendH1: null, trendM15: null, trendError: null
 };
 const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
+const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
+function readPerformanceRecords() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PERFORMANCE_KEY) || '[]');
+    return Array.isArray(saved) ? saved : [];
+  } catch (_) { return []; }
+}
+let performanceRecords = readPerformanceRecords();
+function savePerformanceRecords() {
+  try { localStorage.setItem(PERFORMANCE_KEY, JSON.stringify(performanceRecords.slice(-500))); }
+  catch (error) { console.warn('GENJI: rekod performance tidak dapat disimpan', error); }
+}
+function registerPerformanceSignal(signal, candle, pattern) {
+  if (!candle || !pattern || !['BUY','SELL'].includes(signal)) return;
+  const id = [state.interval, candle.t, signal, pattern.type].join('_');
+  if (performanceRecords.some(record => record.id === id)) return;
+  const entry = candle.c;
+  const stop = signal === 'BUY' ? candle.l : candle.h;
+  const risk = Math.abs(entry - stop);
+  if (!Number.isFinite(risk) || risk <= 0) return;
+  const target = signal === 'BUY' ? entry + risk : entry - risk;
+  performanceRecords.push({
+    id, symbol:'XAUUSD', interval:state.interval, side:signal,
+    pattern:pattern.name, patternType:pattern.type, signalTime:candle.t,
+    entry, stop, target, risk, outcome:'PENDING', barsChecked:0,
+    createdAt:Date.now()
+  });
+  performanceRecords = performanceRecords.slice(-500);
+  savePerformanceRecords();
+}
+function updatePerformanceOutcomes() {
+  let changed = false;
+  for (const record of performanceRecords) {
+    if (record.interval !== state.interval || record.outcome !== 'PENDING') continue;
+    const future = state.candles.filter(c =>
+      c.t > record.signalTime && isClosedCandle(c, record.interval)
+    ).sort((a,b)=>a.t-b.t).slice(0,5);
+    for (let i=0;i<future.length;i++) {
+      const candle = future[i];
+      const hitTarget = record.side === 'BUY' ? candle.h >= record.target : candle.l <= record.target;
+      const hitStop = record.side === 'BUY' ? candle.l <= record.stop : candle.h >= record.stop;
+      record.barsChecked = i + 1;
+      if (hitTarget && hitStop) {
+        record.outcome = 'AMBIGUOUS';
+        record.resolvedAt = candle.t;
+        changed = true;
+        break;
+      }
+      if (hitTarget) {
+        record.outcome = 'WIN';
+        record.resolvedAt = candle.t;
+        changed = true;
+        break;
+      }
+      if (hitStop) {
+        record.outcome = 'LOSS';
+        record.resolvedAt = candle.t;
+        changed = true;
+        break;
+      }
+    }
+    if (record.outcome === 'PENDING' && future.length >= 5) {
+      record.outcome = 'EXPIRED';
+      record.resolvedAt = future[4].t;
+      record.barsChecked = 5;
+      changed = true;
+    }
+  }
+  if (changed) savePerformanceRecords();
+}
+function renderPerformance() {
+  const records = performanceRecords.filter(record => record.interval === state.interval);
+  const wins = records.filter(record => record.outcome === 'WIN').length;
+  const losses = records.filter(record => record.outcome === 'LOSS').length;
+  const pending = records.filter(record => record.outcome === 'PENDING').length;
+  const other = records.filter(record => ['EXPIRED','AMBIGUOUS'].includes(record.outcome)).length;
+  const resolved = wins + losses;
+  $('perf-scope').textContent = 'XAUUSD · ' + state.interval + ' · Rekod peranti ini';
+  $('perf-total').textContent = String(records.length);
+  $('perf-winrate').textContent = resolved ? (wins / resolved * 100).toFixed(1) + '%' : '—';
+  $('perf-wins').textContent = String(wins);
+  $('perf-losses').textContent = String(losses);
+  $('perf-pending').textContent = String(pending);
+  $('perf-other').textContent = String(other);
+  const recent = records.slice().sort((a,b)=>b.signalTime-a.signalTime).slice(0,10);
+  $('perf-history').innerHTML = recent.length ? recent.map(record => {
+    const date = new Date(record.signalTime * 1000).toLocaleString('ms-MY');
+    const price = Number(record.entry).toFixed(2);
+    return '<div class="performance-row"><div><strong>' + record.side + ' · ' + record.pattern + '</strong><small>' + date + ' · Entry ' + price + ' · ' + record.interval + '</small></div><span class="perf-status ' + record.outcome + '">' + record.outcome + '</span></div>';
+  }).join('') : '<p>Belum ada rekod signal untuk timeframe ini. Dashboard mula merekod selepas signal BUY/SELL baharu disahkan.</p>';
+}
 const chart = {
   axisW: 74, timeH: 26, volPct: 0.18, hover: null,
   dragging: false, dragStartX: 0, dragStartOffset: 0
@@ -267,6 +358,9 @@ function renderAnalysis() {
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
   $('a-signal-tf').textContent=state.interval;
+  if (signal !== 'WAIT' && candle && pattern) registerPerformanceSignal(signal, candle, pattern);
+  updatePerformanceOutcomes();
+  renderPerformance();
 }
 function drawTag(ctx, x, y, text, background, foreground) {
   ctx.font = 'bold 10px system-ui';
@@ -422,6 +516,12 @@ function pointerPosition(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function bind() {
+  $('btn-clear-performance').onclick = () => {
+    if (!confirm('Padam semua rekod performance yang disimpan pada peranti ini?')) return;
+    performanceRecords = [];
+    savePerformanceRecords();
+    renderPerformance();
+  };
   document.querySelectorAll('.analysis-tab').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.analysis-tab').forEach(item => { item.classList.toggle('active',item===tab); item.setAttribute('aria-selected',item===tab?'true':'false'); });
     document.querySelectorAll('.analysis-pane').forEach(pane => pane.classList.toggle('active',pane.id==='tab-'+tab.dataset.tab));
