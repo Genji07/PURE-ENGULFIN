@@ -166,3 +166,20 @@ footer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;pad
 .insight-row small{grid-column:1/-1;color:var(--muted);font-size:9px}
 .insight-note{padding:8px;border-left:2px solid var(--yellow);color:var(--muted);font-size:9px;line-height:1.5}
 .insight-disclaimer{margin:9px 0 0;color:var(--muted);font-size:9px;line-height:1.5}
+
+/* GENJI smart market regime */
+.regime-card{padding:12px;background:#0f1729;border:1px solid var(--border);border-radius:8px}
+.regime-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.regime-head strong{display:block;font-size:13px}.regime-head small{display:block;color:var(--muted);font-size:9px;margin-top:3px}
+.regime-pill{font-size:10px;font-weight:800;padding:6px 9px;border-radius:5px;background:#27344a;color:var(--muted)}
+.regime-pill.trend{background:#123b36;color:#46d6b8}.regime-pill.range{background:#3b3218;color:#f2c75c}
+.regime-pill.high{background:#421f2a;color:#ff8585}.regime-pill.low{background:#26334b;color:#9bb9e8}
+.regime-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.regime-grid>div{padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;min-width:0}
+.regime-grid span{display:block;color:var(--muted);font-size:8px;letter-spacing:.3px}
+.regime-grid strong{display:block;font-size:12px;margin-top:4px;overflow-wrap:anywhere}
+.regime-reason{padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;font-size:10px;line-height:1.5}
+.regime-filter{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:10px}
+.regime-filter span{font-weight:800;color:var(--yellow)}
+.regime-disclaimer{font-size:9px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+@media(max-width:600px){.regime-grid{grid-template-columns:1fr 1fr}.regime-grid>div:last-child{grid-column:1/-1}}
