@@ -7,6 +7,58 @@ const state = {
 };
 const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
 const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
+const SIGNAL_LOG_KEY = 'genji_pure_engulfing_signal_log_v1';
+let signalLog = readSignalLog();
+let selectedLogId = null;
+function readSignalLog() {
+  try { const rows=JSON.parse(localStorage.getItem(SIGNAL_LOG_KEY)||'[]'); return Array.isArray(rows)?rows:[]; }
+  catch (_) { return []; }
+}
+function saveSignalLog() {
+  signalLog=signalLog.slice(-1000);
+  try { localStorage.setItem(SIGNAL_LOG_KEY,JSON.stringify(signalLog)); }
+  catch (error) { console.warn('GENJI: signal log tidak dapat disimpan',error); }
+}
+function recordSignalLog(signal,candle,pattern,score,grade,detail) {
+  if(!candle) return;
+  const id=[state.interval,candle.t,signal].join('_');
+  if(signalLog.some(row=>row.id===id)) return;
+  signalLog.push({
+    id,interval:state.interval,time:candle.t,signal,
+    pattern:pattern?.name||'Tiada engulfing',
+    patternType:pattern?.type||'—',
+    score,grade,detail,
+    o:candle.o,h:candle.h,l:candle.l,c:candle.c
+  });
+  saveSignalLog();
+  renderSignalLog();
+}
+function renderSignalLog() {
+  const filter=$('log-filter')?.value||'ALL';
+  const rows=signalLog.filter(row=>row.interval===state.interval&&(filter==='ALL'||row.signal===filter)).slice().sort((a,b)=>b.time-a.time);
+  $('log-count').textContent=rows.length+' rekod · '+state.interval;
+  $('log-history').innerHTML=rows.length?rows.slice(0,100).map(row=>
+    '<div class="log-row"><div><strong class="'+row.signal.toLowerCase()+'">'+row.signal+' · '+row.pattern+'</strong><small>'+new Date(row.time*1000).toLocaleString('ms-MY')+' · Skor '+row.score+'/100 · '+row.grade+'</small><small>'+row.detail+'</small></div><button class="ghost log-replay-btn" type="button" data-log-id="'+encodeURIComponent(row.id)+'">Lihat candle</button></div>'
+  ).join(''):'<p>Tiada rekod untuk pilihan ini.</p>';
+  const selected=signalLog.find(row=>row.id===selectedLogId);
+  if(selected) showLogSnapshot(selected);
+}
+function showLogSnapshot(row) {
+  selectedLogId=row.id;
+  $('log-replay').innerHTML='<strong>Snapshot candle · '+row.signal+' · '+row.interval+'</strong><p>'+new Date(row.time*1000).toLocaleString('ms-MY')+'</p><div class="log-ohlc"><span>OPEN <b>'+row.o.toFixed(2)+'</b></span><span>HIGH <b>'+row.h.toFixed(2)+'</b></span><span>LOW <b>'+row.l.toFixed(2)+'</b></span><span>CLOSE <b>'+row.c.toFixed(2)+'</b></span></div><p>Pattern: '+row.pattern+' · Confirmation: '+row.score+'/100 ('+row.grade+')</p><p>'+row.detail+'</p>';
+}
+function exportSignalLog() {
+  const filter=$('log-filter').value;
+  const rows=signalLog.filter(row=>row.interval===state.interval&&(filter==='ALL'||row.signal===filter));
+  const fields=['time','interval','signal','pattern','patternType','score','grade','detail','o','h','l','c'];
+  const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  const csv=[fields.join(','),...rows.map(row=>fields.map(field=>quote(row[field])).join(','))].join('\r\n');
+  const blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download='genji-signal-log-'+state.interval+'.csv';
+  document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+}
+
 function readPerformanceRecords() {
   try {
     const saved = JSON.parse(localStorage.getItem(PERFORMANCE_KEY) || '[]');
@@ -539,6 +591,7 @@ function renderAnalysis() {
   $('a-signal-detail').textContent=detail;
   $('a-signal-tf').textContent=state.interval;
   pushSignalAlert(signal,candle,detail,scoreGrade);
+  recordSignalLog(signal,candle,pattern,confirmationScore,scoreGrade,detail);
   const memoryFeatures=pattern&&candle&&signal!=='WAIT'?{
     side:signal, patternType:pattern.type,
     h1:h1?.direction||'unknown', m15:m15?.direction||'unknown',
@@ -721,6 +774,16 @@ function pointerPosition(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function bind() {
+  $('log-filter').onchange=renderSignalLog;
+  $('btn-export-log').onclick=exportSignalLog;
+  $('log-history').addEventListener('click',event=>{
+    const button=event.target.closest('[data-log-id]');
+    if(!button) return;
+    const id=decodeURIComponent(button.dataset.logId);
+    const row=signalLog.find(item=>item.id===id);
+    if(row) showLogSnapshot(row);
+  });
+
   $('btn-alert-sound').onclick = () => {
     alertState.soundEnabled=!alertState.soundEnabled;
     if (alertState.soundEnabled) {
