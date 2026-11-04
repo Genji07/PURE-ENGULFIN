@@ -990,6 +990,7 @@ function openPatternReplay(id){
   $('pr-replay-meta').textContent='Body '+(Number.isFinite(Number(record.bodyRatio))?(Number(record.bodyRatio)*100).toFixed(0)+'%':'—')+' · H1 '+(record.h1||'—')+' · M15 '+(record.m15||'—')+' · Entry '+fmt(record.entry)+' · Stop '+fmt(record.stop)+' · Sasaran '+fmt(record.target)+' · Bars '+(record.bars??'—');
   drawPatternReplay(record,activeReplayContext);
   updateReplayStepLabel();
+  updateReplayEventLabel(record);
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function replayEventFor(record,context){
@@ -1071,6 +1072,7 @@ function stepPatternReplay(delta){
   activeReplayStep=Math.max(0,Math.min(total-1,activeReplayStep+delta));
   drawPatternReplay(record,activeReplayContext);
   updateReplayStepLabel();
+  updateReplayEventLabel(record);
   const current=activeReplayContext[activeReplayStep];
   if(current){const fmt=v=>Number(v).toFixed(2);$('pr-replay-values').innerHTML=[['OPEN',current.o],['HIGH',current.h],['LOW',current.l],['CLOSE',current.c]].map(([k,v])=>'<div><small>'+k+'</small><b>'+fmt(v)+'</b></div>').join('');}
 }
