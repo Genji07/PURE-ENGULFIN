@@ -841,8 +841,10 @@ function renderPatternLearningPro(context){
   if(matches.length>=3)$('plp-reason').textContent+=' Ringkasan sejarah: '+wins+' WIN, '+losses+' LOSS dan '+other+' keputusan lain/belum selesai. Ini rekod lampau, bukan ramalan.';
   renderAiAutoCompare({pattern,candle,side,bodyRatio,signal});
 }
+let lastAiAutoCompareContext=null;
 function renderAiAutoCompare(current){
   if(!$('ac-results'))return;
+  lastAiAutoCompareContext=current;
   const {pattern,candle,side,bodyRatio}=current;
   if(!pattern||!candle||!side){
     $('ac-best').textContent='—';$('ac-body-diff').textContent='—';$('ac-trend').textContent='—';
@@ -857,11 +859,13 @@ function renderAiAutoCompare(current){
       const score=Math.max(0,Math.min(100,100-(bodyDiff*180)-(rangeDiff*12)+trendMatches*5));
       return{r,bodyDiff,trendMatches,score};
     }).sort((a,b)=>b.score-a.score||b.r.time-a.r.time);
-  const best=candidates[0];
+  const threshold=Number($('ac-threshold')?.value||65);
+  const filtered=candidates.filter(item=>item.score>=threshold);
+  const best=filtered[0];
   $('ac-best').textContent=best?best.score.toFixed(0)+'%':'—';
   $('ac-body-diff').textContent=best?(best.bodyDiff*100).toFixed(1)+'%':'—';
   $('ac-trend').textContent=best?best.trendMatches+'/2':'—';
-  $('ac-results').innerHTML=candidates.length?candidates.slice(0,5).map(({r,bodyDiff,trendMatches,score})=>'<div class="ac-row"><div><strong>'+r.pattern+' · '+r.side+' · '+score.toFixed(0)+'% serupa</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Body '+(Number(r.bodyRatio)*100).toFixed(0)+'% · beza '+(bodyDiff*100).toFixed(1)+'% · trend '+trendMatches+'/2</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Belum ada rekod sejarah dengan timeframe, corak dan arah yang sama. Tambah data sejarah untuk membina perbandingan.</p>';
+  $('ac-results').innerHTML=filtered.length?'<p class="ac-note">'+filtered.length+' daripada '+candidates.length+' rekod melepasi ambang '+threshold+'%. Ini ukuran persamaan, bukan skor kebarangkalian.</p>'+filtered.slice(0,5).map(({r,bodyDiff,trendMatches,score})=>'<div class="ac-row"><div><strong>'+r.pattern+' · '+r.side+' · '+score.toFixed(0)+'% serupa</strong><small>'+new Date(r.time*1000).toLocaleString('ms-MY')+' · Body '+(Number(r.bodyRatio)*100).toFixed(0)+'% · beza '+(bodyDiff*100).toFixed(1)+'% · trend '+trendMatches+'/2</small></div><span class="perf-status '+r.outcome+'">'+r.outcome+'</span></div>').join(''):'<p>Tiada rekod melepasi ambang '+threshold+'%. Cuba ambang lebih rendah atau kumpul lebih banyak sejarah.</p>';
 }
 
 function renderAiLab(context){
@@ -1280,6 +1284,7 @@ function bind() {
   $('pr-filter-outcome').onchange=renderPatternReview;
   $('pr-filter-side').onchange=renderPatternReview;
   $('btn-export-review').onclick=exportPatternReviewCsv;
+  $('ac-threshold').onchange=()=>{if(lastAiAutoCompareContext)renderAiAutoCompare(lastAiAutoCompareContext);};
   $('pr-list').addEventListener('click',event=>{
     const button=event.target.closest('[data-replay-id]');
     if(!button)return;
