@@ -30,6 +30,7 @@
     <button class="analysis-tab" data-tab="signal" role="tab" aria-selected="false">SIGNAL</button>
     <button class="analysis-tab" data-tab="performance" role="tab" aria-selected="false">PERFORMANCE</button>
     <button class="analysis-tab" data-tab="zones" role="tab" aria-selected="false">S/R ZONES</button>
+    <button class="analysis-tab" data-tab="memory" role="tab" aria-selected="false">AI MEMORY</button>
   </div>
   <div class="analysis-pane active" id="tab-pure" role="tabpanel">
     <div class="analysis-grid">
@@ -64,6 +65,19 @@
       </div>
       <p class="score-disclaimer">Skor ialah markah pematuhan kriteria sistem, bukan kebarangkalian menang, ramalan harga atau jaminan hasil.</p>
     </section>
+  </div>
+  <div class="analysis-pane" id="tab-memory" role="tabpanel">
+    <div class="memory-head"><div><strong>GENJI PATTERN MEMORY</strong><small>Perbandingan setup semasa dengan rekod lama yang hampir serupa</small></div><span id="memory-count" class="memory-count">0 rekod</span></div>
+    <div class="memory-summary">
+      <div><span>SETUP SERUPA</span><strong id="memory-matches">0</strong></div>
+      <div><span>WIN SIMULASI</span><strong id="memory-wins">0</strong></div>
+      <div><span>LOSS SIMULASI</span><strong id="memory-losses">0</strong></div>
+      <div><span>WIN RATE SAMPEL</span><strong id="memory-rate">—</strong></div>
+    </div>
+    <div id="memory-verdict" class="memory-verdict">Menunggu setup untuk dibandingkan.</div>
+    <div class="performance-history-title">Setup lama yang paling hampir</div>
+    <div id="memory-history" class="performance-history"><p>Belum ada rekod yang boleh dibandingkan.</p></div>
+    <p class="memory-disclaimer">Memori menggunakan persamaan ciri dan keputusan simulasi 1R yang disimpan pada browser/peranti ini. Ia bukan AI terlatih, bukan backtest menyeluruh, dan keputusan lampau tidak menjamin keputusan seterusnya. Rekod lama tanpa ciri lengkap tidak digunakan.</p>
   </div>
   <div class="analysis-pane" id="tab-zones" role="tabpanel">
     <div class="zones-summary">
