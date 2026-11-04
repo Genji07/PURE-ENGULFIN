@@ -773,7 +773,8 @@ function renderMtfAlignment() {
   $('mtf-filter-status').textContent=same?'LULUS · '+(h1.direction==='bull'?'BUY BIAS':'SELL BIAS'):'BLOCK · WAIT';
   return {aligned:same,side:same?h1.direction:null,status};
 }
-function rSideMatches(row,side){ return row && row.side===side; }\nfunction renderAnalysis() {
+function rSideMatches(row,side){ return row && row.side===side; }
+function renderAnalysis() {
   const candles = state.candles;
   const closedIndex = candles.map((c,i)=>isClosedCandle(c,state.interval)?i:-1).filter(i=>i>=0).pop();
   const candle = closedIndex == null ? null : candles[closedIndex];
