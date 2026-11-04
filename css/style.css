@@ -595,3 +595,15 @@ footer{width:100%;overflow-wrap:anywhere}
 .pr-replay-values{margin-top:9px}
 .pr-replay-btn{margin-top:9px;width:100%;min-height:38px;font-size:10px}
 @media(max-width:600px){.pr-replay{padding:9px}.pr-replay-head button{padding:8px 10px}}
+
+
+/* GENJI AI AUTO-COMPARE */
+.ac-panel{margin-top:14px;padding:11px;border:1px solid #365c38;border-radius:9px;background:#09120b}
+.ac-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:8px 0}
+.ac-summary>div{padding:9px 7px;border:1px solid #29452d;border-radius:7px;background:#101b12;min-width:0}
+.ac-summary span{display:block;color:#9eae9b;font-size:7px;font-weight:900}
+.ac-summary b{display:block;color:#f2cf36;font-size:15px;margin-top:5px;overflow-wrap:anywhere}
+.ac-results{display:grid;gap:6px}
+.ac-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px;border:1px solid #29452d;border-radius:7px;background:#0c160e}
+.ac-row strong{display:block;font-size:9px;color:#edf4e9}.ac-row small{display:block;font-size:8px;color:#9eae9b;margin-top:4px;line-height:1.4}
+@media(max-width:600px){.ac-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.ac-summary b{font-size:12px}}
