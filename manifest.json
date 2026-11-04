@@ -11,6 +11,11 @@
   "background_color": "#08110a",
   "theme_color": "#08110a",
   "icons": [
-    {"src":"icons/genji-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+    {
+      "src": "icons/genji-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }
