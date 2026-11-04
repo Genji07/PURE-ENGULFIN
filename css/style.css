@@ -54,3 +54,21 @@ footer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;pad
 .perf-status{font-size:10px;font-weight:700;padding:4px 7px;border-radius:4px;background:#27344a;color:#c4d0e2}
 .perf-status.WIN{background:#123b36;color:#46d6b8}.perf-status.LOSS{background:#421f2a;color:#ff7777}.perf-status.PENDING{background:#3b3218;color:#f2c75c}
 @media(max-width:600px){.performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.performance-head button{font-size:10px;padding:7px 9px}}
+
+/* GENJI support / resistance zones */
+.zones-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.zones-summary>div{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:11px;min-width:0}
+.zones-summary span{display:block;color:var(--muted);font-size:9px;letter-spacing:.35px}
+.zones-summary strong{display:block;font-size:17px;margin:4px 0;font-variant-numeric:tabular-nums}
+.zones-summary small{display:block;color:var(--muted);font-size:10px}
+.zone-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0;color:var(--muted);font-size:10px}
+.zone-legend span{display:flex;align-items:center;gap:5px}
+.zone-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.zone-dot.support{background:#26a69a}.zone-dot.resistance{background:#ef5350}
+.zone-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.zone-columns h3{font-size:11px;margin:4px 0 7px}
+.zone-list{display:grid;gap:6px}.zone-row{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px}
+.zone-row strong{display:block;font-size:11px;font-variant-numeric:tabular-nums}
+.zone-row small{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+.zone-disclaimer{font-size:10px;color:var(--muted);line-height:1.5;margin:12px 0 0}
+@media(max-width:600px){.analysis-tabs{overflow-x:auto}.analysis-tab{min-width:85px}.zones-summary{grid-template-columns:1fr 1fr}.zone-columns{grid-template-columns:1fr}}
