@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-ai-pattern-learning-pro-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-ai-pattern-review-20261104">
 </head>
 <body>
 <div class="topbar">
@@ -209,6 +209,19 @@
       <p class="ai-lab-disclaimer">Semua paras ialah pengiraan pendidikan berdasarkan candle sejarah, bukan arahan entry, stop-loss atau take-profit. Pergerakan sebenar boleh berbeza.</p>
     </section>
 
+    <section class="ai-lab-card pattern-review-panel">
+      <div class="ai-lab-head"><div><strong>GENJI AI PATTERN REVIEW</strong><small>Semak sejarah candle engulfing, trend dan hasil simulasi satu persatu</small></div><span id="pr-count" class="ai-lab-pill">0 REKOD</span></div>
+      <div class="pr-filters">
+        <label>Timeframe<select id="pr-filter-tf"><option value="all">Semua timeframe</option><option value="1m">M1</option><option value="5m">M5</option><option value="15m">M15</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option></select></label>
+        <label>Keputusan<select id="pr-filter-outcome"><option value="all">Semua keputusan</option><option value="WIN">WIN simulasi</option><option value="LOSS">LOSS simulasi</option><option value="AMBIGUOUS">AMBIGUOUS</option><option value="EXPIRED">EXPIRED</option><option value="PENDING">PENDING</option><option value="INVALID">INVALID</option></select></label>
+        <label>Arah<select id="pr-filter-side"><option value="all">BUY + SELL</option><option value="BUY">BUY</option><option value="SELL">SELL</option></select></label>
+      </div>
+      <div class="pr-summary"><div><span>DITAPIS</span><b id="pr-total">0</b></div><div><span>WIN</span><b id="pr-wins">0</b></div><div><span>LOSS</span><b id="pr-losses">0</b></div><div><span>WIN RATE*</span><b id="pr-rate">—</b></div></div>
+      <div class="pr-actions"><button id="btn-export-review" class="green" type="button">Eksport rekod CSV</button></div>
+      <div id="pr-list" class="pr-list"><p>Rekod review akan muncul selepas sejarah candle dianalisis.</p></div>
+      <p class="ai-lab-disclaimer">*Win rate hanya mengira WIN dan LOSS simulasi yang selesai. Keputusan AMBIGUOUS, EXPIRED, PENDING dan INVALID tidak dikira. Rekod lama yang dibuat sebelum kemas kini mungkin tiada nilai OHLC penuh.</p>
+    </section>
+
     <section class="ai-lab-card">
       <div class="ai-lab-head"><div><strong>HISTORICAL CANDLE LOADER</strong><small>Muat sejarah OHLC tambahan untuk analisis dan backtest</small></div><span id="history-load-status" class="ai-lab-pill">SEDIA</span></div>
       <div class="history-loader-controls"><label>Jumlah candle diminta<select id="history-load-limit"><option value="500">500 candle</option><option value="1000">1,000 candle</option><option value="2000" selected>2,000 candle</option><option value="5000">5,000 candle</option></select></label><button id="btn-load-history" class="green" type="button">Muat sejarah</button></div>
@@ -261,6 +274,6 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-ai-pattern-learning-pro-20261104"></script>
+<script src="js/script.js?v=genji-ai-pattern-review-20261104"></script>
 </body>
 </html>
