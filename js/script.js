@@ -3,7 +3,7 @@
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
   candles: [], tick: null, tickUpdatedAt: 0, candleUpdatedAt: 0, trendUpdatedAt: 0, tickLatencyMs: null, candleLatencyMs: null, trendLatencyMs: null, running: false, timer: null,
-  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null, trendContextError: null
+  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null, trendContextError: null, entrySetup: null, entryUpdatedAt: 0, entryError: null
 };
 let pollingRunId = 0;
 let trendLastAttempt = 0;
@@ -399,6 +399,36 @@ async function fetchCandles(){
   saveCachedCandles();
   detectPatterns();calculateSupportResistance();
 }
+function detectEntryEngulfing(candles,tf){
+  const closed=candles.filter(c=>isClosedCandle(c,tf));
+  if(closed.length<2)return {ok:false,reason:'Menunggu sekurang-kurangnya 2 candle tertutup '+tf.toUpperCase()+'.'};
+  const previous=closed[closed.length-2],current=closed[closed.length-1];
+  const body=Math.abs(current.c-current.o),range=Math.max(current.h-current.l,1e-8),bodyRatio=body/range;
+  const bodyBull=previous.c<previous.o&&current.c>current.o&&current.o<=previous.c&&current.c>=previous.o;
+  const bodyBear=previous.c>previous.o&&current.c<current.o&&current.o>=previous.c&&current.c<=previous.o;
+  const fullBull=bodyBull&&current.h>=previous.h&&current.l<=previous.l;
+  const fullBear=bodyBear&&current.h>=previous.h&&current.l<=previous.l;
+  const bull=state.engDef==='full'?fullBull:state.engDef==='body'?bodyBull:(bodyBull||fullBull);
+  const bear=state.engDef==='full'?fullBear:state.engDef==='body'?bodyBear:(bodyBear||fullBear);
+  return {ok:!!(bull||bear),side:bull?'bull':bear?'bear':null,candle:current,bodyRatio,
+    name:bull?'Bullish Engulfing':bear?'Bearish Engulfing':'Tiada engulfing',
+    reason:bull||bear?'Engulfing '+(bull?'bullish':'bearish')+' pada candle '+tf.toUpperCase()+' tertutup.':'Candle '+tf.toUpperCase()+' tertutup terakhir bukan engulfing.'};
+}
+async function fetchEntrySetup(){
+  const [m5,m1]=await Promise.all(['5m','1m'].map(async tf=>{
+    const data=await getJson('https://biquote.io/api/XAUUSD/ohlc?interval='+tf+'&limit=120');
+    return {tf,bars:parseCandleBars(Array.isArray(data)?data:data.bars)};
+  }));
+  const m5Setup=detectEntryEngulfing(m5.bars,'5m'),m1Setup=detectEntryEngulfing(m1.bars,'1m');
+  const bias=state.trendM15?.direction;
+  const alignedBias=['bull','bear'].includes(bias);
+  const m5Aligned=m5Setup.ok&&m5Setup.side===bias&&m5Setup.bodyRatio>=0.35;
+  const m1Aligned=m1Setup.ok&&m1Setup.side===bias&&m1Setup.bodyRatio>=0.35;
+  state.entrySetup={bias,m5:m5Setup,m1:m1Setup,confirmed:alignedBias&&m5Aligned&&m1Aligned,
+    side:alignedBias&&m5Aligned&&m1Aligned?bias:null};
+  state.entryUpdatedAt=Date.now();state.entryError=null;
+  return state.entrySetup;
+}
 function renderHistoryLoader(){
   if(!$('history-loaded-count'))return;
   const candles=state.candles;
@@ -617,12 +647,13 @@ function detectPatterns() {
 }
 async function tickOnce(runId) {
   if (!state.running || runId !== pollingRunId) return;
-  const results = await Promise.allSettled([fetchCandles(), fetchTick(), refreshTrendIfNeeded()]);
+  const results = await Promise.allSettled([fetchCandles(), fetchTick(), refreshTrendIfNeeded(), fetchEntrySetup()]);
   // Ignore responses from an older Start/Stop cycle or a previous timeframe.
   if (!state.running || runId !== pollingRunId) return;
   if(results[0].status==='fulfilled'){updatePerformanceOutcomes();runAiBacktest();}
   state.candleError = results[0].status === 'rejected' ? results[0].reason.message : null;
   state.tickError = results[1].status === 'rejected' ? results[1].reason.message : null;
+  state.entryError = results[3].status === 'rejected' ? results[3].reason.message : null;
   renderAll();
   if (state.running && runId === pollingRunId) state.timer = setTimeout(()=>tickOnce(runId), state.pollMs);
 }
@@ -846,7 +877,25 @@ function renderAnalysis() {
       detail=!dataFresh?'Data candle atau MTF sudah lama/tidak lengkap (candle ≤90s, MTF ≤180s diperlukan). Signal ditahan; kekalkan WAIT.':(!mtf.aligned||mtf.side!==patternSide?'MTF '+mtf.status+' atau tidak searah dengan pattern. Signal ditahan; kekalkan WAIT.':'Pattern dikesan tetapi body belum mencapai 35% atau syarat confirmation belum lengkap. Kekalkan WAIT.');
     }
   }
-  $('a-pattern').textContent=pattern?pattern.name:'TIADA';
+  const entry=state.entrySetup;
+  const entryFresh=!!(entry&&state.entryUpdatedAt&&Date.now()-state.entryUpdatedAt<=90000&&!state.entryError);
+  const entrySignal=entryFresh&&entry.confirmed?(entry.side==='bull'?'BUY':'SELL'):'WAIT';
+  const entryReason=state.entryError?'Ralat data M5/M1: '+state.entryError:
+    !entryFresh?'Menunggu data M5/M1 yang segar.':
+    !['bull','bear'].includes(entry?.bias)?'Bias M15 belum tersedia.':
+    !entry.m5.ok?'M5: '+entry.m5.reason:
+    entry.m5.side!==entry.bias?'M5 bercanggah dengan bias M15.':
+    entry.m5.bodyRatio<0.35?'Body engulfing M5 kurang 35%.':
+    !entry.m1.ok?'M1: '+entry.m1.reason:
+    entry.m1.side!==entry.bias?'M1 belum searah dengan bias M15.':
+    entry.m1.bodyRatio<0.35?'Body engulfing M1 kurang 35%.':
+    'M15 bias, M5 setup dan M1 confirmation selari.';
+  signal=entrySignal;
+  detail=entryReason;
+  const signalRecordCandle=entry?.m5?.candle||candle;
+  const signalRecordPattern=entry?.m5?.ok?{name:entry.m5.name,type:'M5 ENTRY'}:pattern;
+  $('a-pattern').textContent=entry?.m5?.name||'MENUNGGU M5';
+
   $('a-pattern-history').textContent=closedEngulfings.length+' ditemui · '+(latestEngulfing?latestEngulfing.name+' · '+new Date(candles[latestEngulfing.index].t*1000).toLocaleString('ms-MY'):'Belum ada engulfing tertutup dalam data dimuatkan');
   // Similarity sejarah: arah, jenis engulfing dan kekuatan body.
   const patternMemoryRows=latestEngulfing?closedEngulfings.filter(p=>p.index!==latestEngulfing.index).map(p=>{
@@ -1048,30 +1097,31 @@ function renderAnalysis() {
   $('a-reason').innerHTML=reasons.map(r=>'<div class="reason-item '+(r.ok?'pass':'fail')+'">'+(r.ok?'✓ ':'! ')+r.text+'</div>').join('');
   const signalEl=$('a-signal'); signalEl.textContent=signal; signalEl.className='signal-result '+signal.toLowerCase();
   $('a-signal-detail').textContent=detail;
-  $('a-signal-tf').textContent=state.interval;
-  pushSignalAlert(signal,candle,detail,scoreGrade);
-  recordSignalLog(signal,candle,pattern,confirmationScore,scoreGrade,detail);
-  const memoryFeatures=pattern&&candle&&signal!=='WAIT'?{
-    side:signal, patternType:pattern.type,
-    h1:h1?.direction||'unknown', m15:m15?.direction||'unknown',
-    bodyRatio:Number(bodyRatio.toFixed(3)),
-    nearZone:!!(patternSide==='bull'?nearSupport:nearResistance),
-    rejection:patternSide==='bull'?supportRejection:patternSide==='bear'?resistanceRejection:false,
+  $('a-signal-tf').textContent='M15 bias → M5 setup + M1 confirm';
+  $('a-m15').textContent=(entry?.bias||'unknown').toUpperCase();
+  pushSignalAlert(signal,signalRecordCandle,detail,scoreGrade);
+  recordSignalLog(signal,signalRecordCandle,signalRecordPattern,confirmationScore,scoreGrade,detail);
+  const memoryFeatures=signalRecordPattern&&signalRecordCandle&&signal!=='WAIT'?{
+    side:signal, patternType:signalRecordPattern.type,
+    h1:'not-required', m15:entry?.bias||'unknown',
+    bodyRatio:Number(((entry?.m5?.bodyRatio)||bodyRatio).toFixed(3)),
+    nearZone:false,
+    rejection:false,
     score:confirmationScore
   }:null;
-  if (signal !== 'WAIT' && candle && pattern) registerPerformanceSignal(signal, candle, pattern, memoryFeatures);
+  if (signal !== 'WAIT' && signalRecordCandle && signalRecordPattern) registerPerformanceSignal(signal, signalRecordCandle, signalRecordPattern, memoryFeatures);
   updatePerformanceOutcomes();
   renderPerformance();
   renderPatternMemory(memoryFeatures);
   const qualityChecks=[
     {label:'Engulfing candle tertutup',ok:!!(pattern&&pattern.name.includes('Engulfing')&&candle)},
     {label:'Body strength sekurang-kurangnya 35%',ok:bodyStrong},
-    {label:'Trend H1 + M15 searah',ok:!!trendOK},
+    {label:'Bias M15 tersedia',ok:!!entryFresh&&['bull','bear'].includes(entry?.bias)},
     {label:'Data candle dan MTF segar',ok:!!dataFresh},
     {label:'Market regime (konteks sahaja)',ok:true},
-    {label:'H1 + M15 selari dengan pattern',ok:!!(mtf.aligned&&mtf.side===patternSide)}
+    {label:'M5 setup + M1 confirmation searah M15',ok:!!(entryFresh&&entry?.confirmed)}
   ];
-  lastAiContext={signal,detail,score:confirmationScore,pattern,candle,regime:marketRegime,mtf,checks:qualityChecks};
+  lastAiContext={signal,detail,score:confirmationScore,pattern:signalRecordPattern,candle:signalRecordCandle,regime:marketRegime,mtf,entry,checks:qualityChecks};
   renderAiLab(lastAiContext);
 }
 
