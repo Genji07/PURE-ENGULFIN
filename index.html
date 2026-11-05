@@ -9,7 +9,7 @@
 <link rel="icon" href="icons/genji-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/genji-icon.svg">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-api-limit-fix-20261104">
+<link rel="stylesheet" href="css/style.css?v=genji-background-sync-v1-20261105">
 </head>
 <body>
 <div class="topbar">
@@ -138,6 +138,22 @@
     <p class="log-disclaimer">Rekod bermula selepas ciri ini dipasang; ia tidak mengisi semula sejarah lama. Snapshot ialah rekod indikator, bukan transaksi sebenar atau nasihat dagangan.</p>
   </div>
   <div class="analysis-pane" id="tab-memory" role="tabpanel">
+    <section class="background-archive-card" aria-label="GENJI Background Archive">
+      <div class="background-archive-head">
+        <div><strong>GENJI BACKGROUND ARCHIVE</strong><small>Arkib candle server · kemas kini automatik walaupun app ditutup</small></div>
+        <button id="btn-sync-background" class="ghost" type="button">Sync sekarang</button>
+      </div>
+      <div id="background-archive-status" class="memory-verdict">Menyambung ke arkib server…</div>
+      <div class="memory-summary background-archive-metrics">
+        <div><span>CANDLE M1</span><strong id="background-count-1m">0</strong></div>
+        <div><span>CANDLE M5</span><strong id="background-count-5m">0</strong></div>
+        <div><span>CANDLE M15</span><strong id="background-count-15m">0</strong></div>
+        <div><span>POLA DIARKIB</span><strong id="background-pattern-count">0</strong></div>
+      </div>
+      <div class="performance-history-title">Pattern engulfing dari arkib server</div>
+      <div id="background-pattern-history" class="performance-history"><p>Menunggu rekod server.</p></div>
+      <p class="memory-disclaimer">Arkib server berasingan daripada memori dan rekod simulasi lama pada peranti ini. Sync hanya menambah salinan arkib tempatan; ia tidak memadam atau menggantikan data lama.</p>
+    </section>
     <div class="memory-head"><div><strong>GENJI PATTERN MEMORY</strong><small>Perbandingan setup semasa dengan rekod lama yang hampir serupa</small></div><span id="memory-count" class="memory-count">0 rekod</span></div>
     <div class="memory-summary">
       <div><span>ENGULFING SEJARAH</span><strong id="memory-pattern-total">0</strong></div>
@@ -356,7 +372,7 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-entry-freshness-v1-20261105"></script>
+<script src="js/script.js?v=genji-background-sync-v1-20261105"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("GENJI PWA:", error)));
