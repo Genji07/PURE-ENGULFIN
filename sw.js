@@ -1,11 +1,11 @@
-const CACHE_NAME = "genji-pwa-v34";
+const CACHE_NAME = "genji-pwa-v35";
 const APP_FILES = [
   "./index.html",
   "./manifest.json",
   "./css/style.css",
   "./css/style.css?v=genji-archive-outcome-replay-v1-20261105",
   "./js/script.js",
-  "./js/script.js?v=genji-archive-outcome-replay-v1-20261105",
+  "./js/script.js?v=genji-full-audit-v1-20261105",
   "./icons/genji-icon.svg"
 ];
 
