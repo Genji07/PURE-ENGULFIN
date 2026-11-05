@@ -22,7 +22,7 @@
   <div class="api-health-grid">
     <div><span>HARGA XAUUSD</span><b id="api-health-tick">MENUNGGU</b><small id="api-health-tick-time">Belum ada kemas kini</small></div>
     <div><span>CANDLE <i id="api-health-tf-label">5m</i></span><b id="api-health-candles">MENUNGGU</b><small id="api-health-candle-detail">Belum ada data</small></div>
-    <div><span>MTF H4 / H1 / M15 / M5</span><b id="api-health-mtf">MENUNGGU</b><small id="api-health-mtf-detail">Menunggu empat timeframe</small></div>
+    <div><span>MTF WAJIB H1 / M15</span><b id="api-health-mtf">MENUNGGU</b><small id="api-health-mtf-detail">H1/M15 wajib · H4/M5 konteks</small></div>
     <div><span>LATENCY TERAKHIR</span><b id="api-health-latency">—</b><small id="api-health-latency-detail">Tick / Candle / MTF</small></div>
   </div>
   <div class="api-health-foot"><span id="api-health-last-check">Pemeriksaan belum bermula.</span><span id="api-health-errors">Tiada ralat direkod.</span></div>
@@ -356,7 +356,7 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-signal-diagnostics-v1-20261105"></script>
+<script src="js/script.js?v=genji-mtf-required-pair-v1-20261105"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("GENJI PWA:", error)));
