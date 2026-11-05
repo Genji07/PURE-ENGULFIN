@@ -460,11 +460,25 @@ async function fetchEntrySetup(){
   state.entryCandles=m5.bars;
   const m5Setup=detectEntryEngulfing(m5.bars,'5m'),m1Setup=detectEntryEngulfing(m1.bars,'1m');
   const bias=state.trendM15?.direction;
+  const now=Date.now();
+  const biasFresh=!!(state.trendUpdatedAt&&now-state.trendUpdatedAt<=180000&&!state.trendError&&['bull','bear'].includes(bias));
+  const latestClosed=(bars,tf)=>bars.filter(c=>isClosedCandle(c,tf)).at(-1)||null;
+  const candleFresh=(bar,tf)=>{
+    if(!bar)return false;
+    const closedAt=bar.t*1000+candleDurationMs(tf);
+    return now>=closedAt&&now-closedAt<=candleDurationMs(tf)*2;
+  };
+  const m5Closed=latestClosed(m5.bars,'5m');
+  const m1Closed=latestClosed(m1.bars,'1m');
+  const m5Fresh=candleFresh(m5Closed,'5m');
+  const m1Fresh=candleFresh(m1Closed,'1m');
+  const feedsFresh=biasFresh&&m5Fresh&&m1Fresh;
   const alignedBias=['bull','bear'].includes(bias);
   const m5Aligned=m5Setup.ok&&m5Setup.side===bias&&m5Setup.bodyRatio>=0.35;
   const m1Aligned=m1Setup.ok&&m1Setup.side===bias&&m1Setup.bodyRatio>=0.35;
-  state.entrySetup={bias,m5:m5Setup,m1:m1Setup,confirmed:alignedBias&&m5Aligned&&m1Aligned,
-    side:alignedBias&&m5Aligned&&m1Aligned?bias:null};
+  state.entrySetup={bias,m5:m5Setup,m1:m1Setup,biasFresh,m5Fresh,m1Fresh,feedsFresh,
+    confirmed:feedsFresh&&alignedBias&&m5Aligned&&m1Aligned,
+    side:feedsFresh&&alignedBias&&m5Aligned&&m1Aligned?bias:null};
   state.entryUpdatedAt=Date.now();state.entryError=null;
   return state.entrySetup;
 }
@@ -921,7 +935,9 @@ function renderAnalysis() {
   const entrySignal=entryFresh&&entry.confirmed?(entry.side==='bull'?'BUY':'SELL'):'WAIT';
   const entryReason=state.entryError?'Ralat data M5/M1: '+state.entryError:
     !entryFresh?'Menunggu data M5/M1 yang segar.':
-    !['bull','bear'].includes(entry?.bias)?'Bias M15 belum tersedia.':
+    !entry?.biasFresh?'Bias M15 tiada atau sudah lama (maksimum 180 saat).':
+    !entry.m5Fresh?'Candle M5 terakhir sudah lama atau belum tertutup (maksimum 2 candle timeframe).':
+    !entry.m1Fresh?'Candle M1 terakhir sudah lama atau belum tertutup (maksimum 2 candle timeframe).':
     !entry.m5.ok?'M5: '+entry.m5.reason:
     entry.m5.side!==entry.bias?'M5 bercanggah dengan bias M15.':
     entry.m5.bodyRatio<0.35?'Body engulfing M5 kurang 35%.':
