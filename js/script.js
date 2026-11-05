@@ -3,7 +3,7 @@
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
   candles: [], tick: null, tickUpdatedAt: 0, candleUpdatedAt: 0, trendUpdatedAt: 0, tickLatencyMs: null, candleLatencyMs: null, trendLatencyMs: null, running: false, timer: null,
-  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null, trendContextError: null, entrySetup: null, entryUpdatedAt: 0, entryError: null
+  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null, trendContextError: null, entrySetup: null, entryCandles: [], entryUpdatedAt: 0, entryError: null
 };
 let pollingRunId = 0;
 let trendLastAttempt = 0;
@@ -132,16 +132,23 @@ function registerPerformanceSignal(signal, candle, pattern, features) {
   if (!candle || !pattern || !['BUY','SELL'].includes(signal)) return;
   const id = [state.interval, candle.t, signal, pattern.type].join('_');
   if (performanceRecords.some(record => record.id === id)) return;
+  // XAUUSD pip convention: 1 pip = 0.10 price movement.
+  const pipSize = 0.10;
   const entry = candle.c;
-  const stop = signal === 'BUY' ? candle.l : candle.h;
-  const risk = Math.abs(entry - stop);
-  if (!Number.isFinite(risk) || risk <= 0) return;
-  const target = signal === 'BUY' ? entry + risk : entry - risk;
+  const candleRangePips = Math.abs(candle.h-candle.l) / pipSize;
+  const slPips = Math.max(30, Math.min(50, Math.round(candleRangePips)));
+  const stopDistance = slPips * pipSize;
+  const direction = signal === 'BUY' ? 1 : -1;
+  const tp1 = entry + direction * 50 * pipSize;
+  const tp2 = entry + direction * 100 * pipSize;
+  const tp3 = entry + direction * 200 * pipSize;
+  const stop = entry - direction * stopDistance;
   performanceRecords.push({
     id, symbol:'XAUUSD', interval:state.interval, side:signal,
     pattern:pattern.name, patternType:pattern.type, signalTime:candle.t,
-    entry, stop, target, risk, outcome:'PENDING', barsChecked:0,
-    memoryFeatures:features, createdAt:Date.now()
+    entry, stop, target:tp1, tp1, tp2, tp3, pipSize,
+    slPips, exitModel:'TP_LADDER_V1', tp1Hit:false, tp2Hit:false, tp3Hit:false,
+    outcome:'PENDING', barsChecked:0, memoryFeatures:features, createdAt:Date.now()
   });
   performanceRecords = performanceRecords.slice(-500);
   savePerformanceRecords();
@@ -186,38 +193,45 @@ function updatePerformanceOutcomes() {
   let changed = false;
   for (const record of performanceRecords) {
     if (record.interval !== state.interval || record.outcome !== 'PENDING') continue;
-    const future = state.candles.filter(c =>
-      c.t > record.signalTime && isClosedCandle(c, record.interval)
-    ).sort((a,b)=>a.t-b.t).slice(0,5);
+    const ladder = record.exitModel === 'TP_LADDER_V1';
+    const sourceCandles = ladder ? state.entryCandles : state.candles;
+    const sourceTf = ladder ? '5m' : record.interval;
+    const future = sourceCandles.filter(c =>
+      c.t > record.signalTime && isClosedCandle(c, sourceTf)
+    ).sort((a,b)=>a.t-b.t).slice(0, ladder ? 1000 : 5);
     for (let i=0;i<future.length;i++) {
       const candle = future[i];
-      const hitTarget = record.side === 'BUY' ? candle.h >= record.target : candle.l <= record.target;
-      const hitStop = record.side === 'BUY' ? candle.l <= record.stop : candle.h >= record.stop;
       record.barsChecked = i + 1;
-      if (hitTarget && hitStop) {
-        record.outcome = 'AMBIGUOUS';
-        record.resolvedAt = candle.t;
-        changed = true;
-        break;
-      }
-      if (hitTarget) {
-        record.outcome = 'WIN';
-        record.resolvedAt = candle.t;
-        changed = true;
-        break;
-      }
-      if (hitStop) {
-        record.outcome = 'LOSS';
-        record.resolvedAt = candle.t;
-        changed = true;
-        break;
+      if (ladder) {
+        const buy = record.side === 'BUY';
+        const hitStop = buy ? candle.l <= record.stop : candle.h >= record.stop;
+        const hit1 = buy ? candle.h >= record.tp1 : candle.l <= record.tp1;
+        const hit2 = buy ? candle.h >= record.tp2 : candle.l <= record.tp2;
+        const hit3 = buy ? candle.h >= record.tp3 : candle.l <= record.tp3;
+        // If TP1 and SL first appear inside the same OHLC candle, order is unknowable.
+        if (!record.tp1Hit && hitStop && hit1) {
+          record.outcome='AMBIGUOUS'; record.resolvedAt=candle.t; changed=true; break;
+        }
+        if (hit3 && !hitStop) { record.tp1Hit=true;record.tp2Hit=true;record.tp3Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP3';record.resolvedAt=candle.t;changed=true;break; }
+        if (hit2 && !hitStop) { record.tp1Hit=true;record.tp2Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP2';record.resolvedAt=candle.t;changed=true;break; }
+        if (hit1 && !hitStop) { record.tp1Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP1';record.resolvedAt=candle.t;changed=true;break; }
+        if (hitStop) {
+          record.resolvedAt=candle.t; changed=true;
+          if (record.tp1Hit) { record.outcome='WIN';record.resultLabel='PROFIT TP1 · SL selepas TP1'; }
+          else record.outcome='LOSS';
+          break;
+        }
+      } else {
+        const hitTarget = record.side === 'BUY' ? candle.h >= record.target : candle.l <= record.target;
+        const hitStop = record.side === 'BUY' ? candle.l <= record.stop : candle.h >= record.stop;
+        if (hitTarget && hitStop) { record.outcome='AMBIGUOUS';record.resolvedAt=candle.t;changed=true;break; }
+        if (hitTarget) { record.outcome='WIN';record.resolvedAt=candle.t;changed=true;break; }
+        if (hitStop) { record.outcome='LOSS';record.resolvedAt=candle.t;changed=true;break; }
       }
     }
-    if (record.outcome === 'PENDING' && future.length >= 5) {
-      record.outcome = 'EXPIRED';
-      record.resolvedAt = future[4].t;
-      record.barsChecked = 5;
-      changed = true;
+    if (record.outcome === 'PENDING' && future.length >= (ladder ? 1000 : 5)) {
+      record.outcome = 'EXPIRED'; record.resolvedAt=future[future.length-1].t;
+      record.barsChecked=future.length; changed=true;
     }
   }
   if (changed) savePerformanceRecords();
@@ -308,7 +322,9 @@ function renderPerformance() {
   $('perf-history').innerHTML = recent.length ? recent.map(record => {
     const date = new Date(record.signalTime * 1000).toLocaleString('ms-MY');
     const price = Number(record.entry).toFixed(2);
-    return '<div class="performance-row"><div><strong>' + record.side + ' · ' + record.pattern + '</strong><small>' + date + ' · Entry ' + price + ' · ' + record.interval + '</small></div><span class="perf-status ' + record.outcome + '">' + record.outcome + '</span></div>';
+    const label=record.resultLabel||(record.outcome==='PENDING'?'PENDING':record.outcome);
+    const levels=record.exitModel==='TP_LADDER_V1'?' · TP1 '+record.tp1.toFixed(2)+' / TP2 '+record.tp2.toFixed(2)+' / TP3 '+record.tp3.toFixed(2)+' · SL '+record.stop.toFixed(2):'';
+    return '<div class="performance-row"><div><strong>' + record.side + ' · ' + record.pattern + '</strong><small>' + date + ' · Entry ' + price + ' · ' + record.interval + levels + '</small></div><span class="perf-status ' + record.outcome + '">' + label + '</span></div>';
   }).join('') : '<p>Belum ada rekod signal untuk timeframe ini. Dashboard mula merekod selepas signal BUY/SELL baharu disahkan.</p>';
   renderPatternStatistics();
   renderPerformanceInsight();
@@ -419,6 +435,7 @@ async function fetchEntrySetup(){
     const data=await getJson('https://biquote.io/api/XAUUSD/ohlc?interval='+tf+'&limit=120');
     return {tf,bars:parseCandleBars(Array.isArray(data)?data:data.bars)};
   }));
+  state.entryCandles=m5.bars;
   const m5Setup=detectEntryEngulfing(m5.bars,'5m'),m1Setup=detectEntryEngulfing(m1.bars,'1m');
   const bias=state.trendM15?.direction;
   const alignedBias=['bull','bear'].includes(bias);
