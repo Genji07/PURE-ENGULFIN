@@ -2130,41 +2130,12 @@ function bind() {
   else window.addEventListener('resize', scheduleRender);
 }
 
-const CLOUD_MONITOR_URL='https://genji-pattern-monitor.genjikbtt.workers.dev';
-async function syncCloudMonitor(){
-  try{
-    const response=await fetch(CLOUD_MONITOR_URL+'/latest',{cache:'no-store'});
-    if(!response.ok)throw new Error('Server HTTP '+response.status);
-    const latest=await response.json();
-    $('cloud-monitor-status').textContent=latest.status==='OK'?'SERVER AKTIF':latest.status||'MENUNGGU';
-    $('cloud-monitor-updated').textContent=latest.scanned_at?new Date(latest.scanned_at).toLocaleString('ms-MY'):'Belum ada scan';
-    $('cloud-monitor-counts').textContent='Candle diterima — M1: '+(latest.count_1m??0)+' · M5: '+(latest.count_5m??0)+' · M15: '+(latest.count_15m??0)+(Number.isFinite(Number(latest.last_price))?' · Harga terakhir: '+Number(latest.last_price).toFixed(2):'');
-    $('cloud-monitor-reason').textContent=latest.message||'Menunggu scan pertama.';
-    if(['1m','5m','15m'].includes(state.interval)){
-      const candleResponse=await fetch(CLOUD_MONITOR_URL+'/candles?tf='+encodeURIComponent(state.interval)+'&limit=1000',{cache:'no-store'});
-      if(!candleResponse.ok)throw new Error('Data candle HTTP '+candleResponse.status);
-      const payload=await candleResponse.json();
-      const merged=mergeCandles(state.candles,parseCandleBars(payload.bars||[]),10000);
-      const oldLast=state.candles.at(-1)?.t||0,newLast=merged.at(-1)?.t||0;
-      if(merged.length!==state.candles.length||newLast!==oldLast){
-        state.candles=merged;saveCachedCandles();detectPatterns();calculateSupportResistance();renderAll();renderHistoryLoader();
-      }
-    }
-  }catch(error){
-    $('cloud-monitor-status').textContent='SYNC BELUM BERJAYA';
-    $('cloud-monitor-reason').textContent='Tidak dapat sync data server: '+error.message+'. Cuba semula apabila sambungan pulih.';
-  }
-}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncCloudMonitor();});
-window.setInterval(()=>{if(!document.hidden)syncCloudMonitor();},30000);
-
 async function autoBoot(){
   try{
     bind();
     restoreCachedCandles();
     renderTopbar();renderChart();
     scanHistoricalSignals();
-    syncCloudMonitor();
     $('history-load-status').textContent='AUTO';
     $('history-load-note').textContent='Auto Start: live dimulakan dahulu; sejarah dimuatkan di latar…';
     start();
