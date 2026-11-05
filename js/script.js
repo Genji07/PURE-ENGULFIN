@@ -42,6 +42,11 @@ async function syncBackgroundArchive(){
       const rows=bars.map(b=>({t:Number(b.open_time),o:Number(b.open),h:Number(b.high),l:Number(b.low),c:Number(b.close),v:Number(b.tick_volume||0)}))
         .filter(b=>Number.isFinite(b.t)&&[b.o,b.h,b.l,b.c].every(Number.isFinite));
       try{localStorage.setItem('genji_background_archive_candles_v1_'+tf,JSON.stringify(rows));}catch(e){console.warn('GENJI archive cache:',e);}
+      if(tf==='5m'&&rows.length){
+        state.entryCandles=mergeArchivedEntryCandles(state.entryCandles);
+        if(typeof updatePerformanceOutcomes==='function')updatePerformanceOutcomes();
+        if(typeof renderPerformance==='function')renderPerformance();
+      }
       const el=$('background-count-'+tf);if(el)el.textContent=rows.length.toLocaleString('en-US');
     }));
     const pr=await fetch(BACKGROUND_ARCHIVE_URL+'/api/patterns?limit=50',{cache:'no-store'});
@@ -66,6 +71,20 @@ async function syncBackgroundArchive(){
     }
     return {health,patterns:pd.patterns||[]};
   }catch(error){status.textContent='Arkib server belum dapat disegerakkan: '+error.message+'. Rekod lama pada peranti kekal selamat.';throw error;}
+}
+
+function mergeArchivedEntryCandles(liveBars){
+  const merged=new Map();
+  const add=bar=>{
+    if(!bar||!Number.isFinite(Number(bar.t))||![bar.o,bar.h,bar.l,bar.c].every(v=>Number.isFinite(Number(v))))return;
+    merged.set(Number(bar.t),{t:Number(bar.t),o:Number(bar.o),h:Number(bar.h),l:Number(bar.l),c:Number(bar.c),v:Number(bar.v||0)});
+  };
+  try{
+    const archived=JSON.parse(localStorage.getItem('genji_background_archive_candles_v1_5m')||'[]');
+    if(Array.isArray(archived))archived.forEach(add);
+  }catch(error){console.warn('GENJI archived M5 parse:',error);}
+  (Array.isArray(liveBars)?liveBars:[]).forEach(add);
+  return [...merged.values()].sort((a,b)=>a.t-b.t).slice(-1500);
 }
 
 function readSignalLog() {
@@ -534,7 +553,7 @@ async function fetchEntrySetup(){
     const data=await getJson('https://biquote.io/api/XAUUSD/ohlc?interval='+tf+'&limit=120');
     return {tf,bars:parseCandleBars(Array.isArray(data)?data:data.bars)};
   }));
-  state.entryCandles=m5.bars;
+  state.entryCandles=mergeArchivedEntryCandles(m5.bars);
   const m5Setup=detectEntryEngulfing(m5.bars,'5m'),m1Setup=detectEntryEngulfing(m1.bars,'1m');
   const bias=state.trendM15?.direction;
   const now=Date.now();
