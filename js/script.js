@@ -949,9 +949,19 @@ function renderAnalysis() {
     else if(result.classification==='NEGATIF')group.negative++;
     else group.flat++;
   });
+  const readyFiveRows=intervalOutcomeRows.filter(r=>r.horizons?.['5']?.ready);
+  const contextReadyRows=readyFiveRows.filter(r=>r.bodyStrength&&r.contextTrend&&r.contextTrend!=='DATA KURANG');
+  const legacyRows=readyFiveRows.length-contextReadyRows.length;
+  $('memory-quality-total').textContent=String(intervalOutcomeRows.length);
+  $('memory-quality-ready').textContent=String(readyFiveRows.length);
+  $('memory-quality-context').textContent=String(contextReadyRows.length);
+  $('memory-quality-legacy').textContent=String(legacyRows);
+  $('memory-quality-note').textContent=readyFiveRows.length<5
+    ? 'Sampel outcome +5 masih sedikit. Kumpul lebih banyak rekod sebelum membuat perbandingan.'
+    : 'Liputan konteks '+(contextReadyRows.length/readyFiveRows.length*100).toFixed(1)+'%. '+(readyFiveRows.length<20?'Sampel masih awal; peratus boleh berubah besar.':'Jumlah sampel lebih besar, tetapi masih bukan bukti ramalan atau jaminan keputusan.');
   const reliableGroups=[...contextGroups.values()].filter(g=>g.total>=5).sort((a,b)=>b.total-a.total);
   $('memory-context-outcomes').innerHTML=reliableGroups.length
-    ? reliableGroups.map(g=>'<div class="performance-row"><div><strong>'+g.key+'</strong><small>'+g.total+' sampel · Positif '+g.positive+' · Negatif '+g.negative+' · Mendatar '+g.flat+'</small></div><span class="perf-status PENDING">'+(g.positive/g.total*100).toFixed(1)+'% positif</span></div>').join('')
+    ? reliableGroups.map(g=>{const sampleLabel=g.total<10?'AWAL':g.total<20?'SEDERHANA':'LEBIH BANYAK';return '<div class="performance-row"><div><strong>'+g.key+'</strong><small>'+g.total+' sampel · '+sampleLabel+' · Positif '+g.positive+' · Negatif '+g.negative+' · Mendatar '+g.flat+'</small></div><span class="perf-status PENDING">'+(g.positive/g.total*100).toFixed(1)+'% positif</span></div>';}).join('')
     : '<p>Belum ada kumpulan +5 candle dengan minimum 5 sampel lengkap. Data lama tanpa konteks akan dilabel DATA LAMA jika mencukupi.</p>';
   const displayOutcomeRows=intervalOutcomeRows.slice(-12).reverse();
   $('memory-outcome-history').innerHTML=displayOutcomeRows.length
