@@ -14,6 +14,50 @@ const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
 const SIGNAL_LOG_KEY = 'genji_pure_engulfing_signal_log_v1';
 let signalLog = readSignalLog();
 let selectedLogId = null;
+
+const BACKGROUND_ARCHIVE_URL = 'https://genji-background-archive.genjikbtt.workers.dev';
+async function syncBackgroundArchive(){
+  const status=$('background-archive-status');
+  if(!status)return;
+  status.textContent='Sedang menyegerakkan arkib server…';
+  try{
+    const hr=await fetch(BACKGROUND_ARCHIVE_URL+'/health',{cache:'no-store'});
+    if(!hr.ok)throw new Error('Health HTTP '+hr.status);
+    const health=await hr.json();
+    const intervals=['1m','5m','15m'];
+    await Promise.all(intervals.map(async tf=>{
+      const r=await fetch(BACKGROUND_ARCHIVE_URL+'/api/candles?interval='+tf+'&limit=500',{cache:'no-store'});
+      if(!r.ok)throw new Error('Candle '+tf+' HTTP '+r.status);
+      const data=await r.json();
+      const rows=(data.bars||[]).map(b=>({t:Number(b.open_time),o:Number(b.open),h:Number(b.high),l:Number(b.low),c:Number(b.close),v:Number(b.tick_volume||0)}))
+        .filter(b=>Number.isFinite(b.t)&&[b.o,b.h,b.l,b.c].every(Number.isFinite));
+      try{localStorage.setItem('genji_background_archive_candles_v1_'+tf,JSON.stringify(rows));}catch(e){console.warn('GENJI archive cache:',e);}
+      const el=$('background-count-'+tf);if(el)el.textContent=rows.length.toLocaleString('en-US');
+    }));
+    const pr=await fetch(BACKGROUND_ARCHIVE_URL+'/api/patterns?limit=50',{cache:'no-store'});
+    if(!pr.ok)throw new Error('Pattern archive HTTP '+pr.status);
+    const pd=await pr.json();
+    try{localStorage.setItem('genji_background_archive_patterns_v1',JSON.stringify(pd.patterns||[]));}catch(e){console.warn('GENJI pattern cache:',e);}
+    const pc=$('background-pattern-count');if(pc)pc.textContent=Number(health.patterns||0).toLocaleString('en-US');
+    const last=health.lastRun;
+    const when=last?.ran_at?new Date(Number(last.ran_at)*1000).toLocaleString('ms-MY',{timeZone:'Asia/Kuala_Lumpur'}):'belum berjalan';
+    status.textContent=last?'Server '+String(last.status||'aktif').toUpperCase()+' · kemas kini '+when+' · '+(last.candles_saved||0)+' candle diproses':'Server aktif · menunggu kutipan candle pertama';
+    const list=$('background-pattern-history');
+    if(list){
+      list.replaceChildren();
+      const items=pd.patterns||[];
+      if(!items.length){const p=document.createElement('p');p.textContent='Belum ada engulfing tertutup yang memenuhi syarat arkib.';list.appendChild(p);}
+      items.slice(0,15).forEach(item=>{
+        const row=document.createElement('div');row.className='performance-row';
+        const left=document.createElement('span');left.textContent=item.pattern+' · '+String(item.interval||'').toUpperCase();
+        const right=document.createElement('strong');right.textContent=new Date(Number(item.open_time)*1000).toLocaleString('ms-MY',{timeZone:'Asia/Kuala_Lumpur'});
+        row.append(left,right);list.appendChild(row);
+      });
+    }
+    return {health,patterns:pd.patterns||[]};
+  }catch(error){status.textContent='Arkib server belum dapat disegerakkan: '+error.message+'. Rekod lama pada peranti kekal selamat.';throw error;}
+}
+
 function readSignalLog() {
   try { const rows=JSON.parse(localStorage.getItem(SIGNAL_LOG_KEY)||'[]'); return Array.isArray(rows)?rows:[]; }
   catch (_) { return []; }
@@ -1999,6 +2043,7 @@ function bind() {
       state.candleError = error.message; renderAll();
     }); }
   };
+  if($('btn-sync-background')) $('btn-sync-background').onclick = () => syncBackgroundArchive().catch(()=>{});
   $('btn-start').onclick = start;
   $('btn-stop').onclick = stop;
   $('btn-realtime').onclick = () => {
@@ -2134,6 +2179,7 @@ async function autoBoot(){
   try{
     bind();
     restoreCachedCandles();
+    syncBackgroundArchive().catch(error=>console.warn('GENJI background archive:',error));
     renderTopbar();renderChart();
     scanHistoricalSignals();
     $('history-load-status').textContent='AUTO';
