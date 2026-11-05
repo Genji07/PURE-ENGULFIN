@@ -752,7 +752,7 @@ function renderMarketRegime(regime) {
   $('regime-volatility').textContent=regime.volatility;
   $('regime-ratio').textContent=Number.isFinite(regime.ratio)?regime.ratio.toFixed(2)+'×':'—';
   $('regime-reason').textContent=regime.reason;
-  $('regime-filter-status').textContent=regime.label==='TRENDING'?'LULUS · TRENDING SAHAJA':'BLOCK · WAIT';
+  $('regime-filter-status').textContent='KONTEKS · TIDAK BLOCK SIGNAL';
 }
 function renderMtfAlignment() {
   const rows=[['H4',state.trendH4],['H1',state.trendH1],['M15',state.trendM15],['M5',state.trendM5]];
@@ -836,7 +836,7 @@ function renderAnalysis() {
     if (patternSide==='bull') reasons.push({ok:!!supportRejection,text:zoneContext||'Tiada rejection support yang jelas; semak kedudukan zon support.'});
     if (patternSide==='bear') reasons.push({ok:!!resistanceRejection,text:zoneContext||'Tiada rejection resistance yang jelas; semak kedudukan zon resistance.'});
     reasons.push({ok:dataFresh,text:'Kesegaran data: '+(dataFresh?'candle dan MTF terkini':'data candle/MTF lama atau tidak lengkap')+'.'});
-    reasons.push({ok:marketRegime.allowSignal,text:'Market regime: '+marketRegime.label+' · '+marketRegime.reason});
+    reasons.push({ok:true,text:'Konteks market: '+marketRegime.label+' · '+marketRegime.volatility+'. '+marketRegime.reason+' Ini maklumat konteks, bukan penghalang signal.'});
     reasons.push({ok:mtf.aligned&&mtf.side===patternSide,text:'Multi-timeframe: '+mtf.status+(mtf.side?' · '+mtf.side.toUpperCase():'')+'.'});
     if (dataFresh && trendOK && bodyStrong && mtf.aligned && mtf.side===patternSide) {
       signal=patternSide==='bull'?'BUY':'SELL';
@@ -1064,10 +1064,10 @@ function renderAnalysis() {
   renderPatternMemory(memoryFeatures);
   const qualityChecks=[
     {label:'Engulfing candle tertutup',ok:!!(pattern&&pattern.name.includes('Engulfing')&&candle)},
-    {label:'Body strength sekurang-kurangnya 50%',ok:bodyStrong},
+    {label:'Body strength sekurang-kurangnya 35%',ok:bodyStrong},
     {label:'Trend H1 + M15 searah',ok:!!trendOK},
-    {label:'Data live segar (harga/candle/MTF)',ok:!!dataFresh},
-    {label:'Market regime TRENDING normal',ok:!!marketRegime.allowSignal},
+    {label:'Data candle dan MTF segar',ok:!!dataFresh},
+    {label:'Market regime (konteks sahaja)',ok:true},
     {label:'H1 + M15 selari dengan pattern',ok:!!(mtf.aligned&&mtf.side===patternSide)}
   ];
   lastAiContext={signal,detail,score:confirmationScore,pattern,candle,regime:marketRegime,mtf,checks:qualityChecks};
