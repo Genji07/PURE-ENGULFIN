@@ -114,6 +114,12 @@
       <div id="alert-history" class="alert-history"><p>Alert BUY/SELL/WAIT akan dipaparkan di sini apabila candle ditutup.</p></div>
       <p class="alert-disclaimer">Alert ialah pemberitahuan berdasarkan syarat indikator, bukan arahan untuk membuka posisi. Bunyi dan notifikasi perlu diaktifkan sendiri.</p>
     </section>
+      <section class="alert-card" aria-label="GENJI Cloud Data Collector">
+        <div class="alert-card-head"><strong>GENJI CLOUD DATA COLLECTOR</strong><span id="cloud-monitor-status">MENUNGGU SAMBUNGAN</span></div>
+        <div class="signal-meta"><span>Server: <b>Cloudflare · setiap 1 minit</b></span><span>Kemas kini: <b id="cloud-monitor-updated">—</b></span></div>
+        <div class="alert-latest"><strong>DATA PASARAN</strong><p id="cloud-monitor-counts">Menunggu bacaan pertama daripada server.</p><p id="cloud-monitor-reason">Candle akan dikumpulkan walaupun telefon ditutup.</p></div>
+        <p class="alert-disclaimer">Apabila app dibuka semula, candle yang dikumpulkan server akan disegerakkan ke carta. Ini pengumpulan data dan pembelajaran corak sahaja; tiada transaksi automatik.</p>
+      </section>
     <div class="signal-meta"><span>Timeframe carta: <b id="a-signal-tf">5m</b></span><span>M15 bias · M5 setup · M1 confirmation</span></div>
     <section class="confirmation-card" aria-label="GENJI Confirmation Score">
       <div class="confirmation-head"><div><strong>GENJI CONFIRMATION SCORE</strong><small>Penilaian syarat teknikal · maksimum 100 mata</small></div><div class="confirmation-total"><b id="score-total">0</b><span>/100</span></div></div>
@@ -356,7 +362,7 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-entry-freshness-v1-20261105"></script>
+<script src="js/script.js?v=genji-cloud-collector-v1-20261105"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("GENJI PWA:", error)));
