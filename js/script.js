@@ -77,12 +77,18 @@ function saveSignalLog() {
   try { localStorage.setItem(SIGNAL_LOG_KEY,JSON.stringify(signalLog)); }
   catch (error) { console.warn('GENJI: signal log tidak dapat disimpan',error); }
 }
-function recordSignalLog(signal,candle,pattern,score,grade,detail) {
+function recordSignalLog(signal,candle,pattern,score,grade,detail,entry) {
   if(!candle) return;
-  const id=[state.interval,candle.t,signal].join('_');
+  const id=['M5',candle.t,signal].join('_');
   if(signalLog.some(row=>row.id===id)) return;
   signalLog.push({
-    id,interval:state.interval,time:candle.t,signal,
+    id,interval:state.interval,chartInterval:state.interval,sourceInterval:'5m',time:candle.t,signal,
+    m15Bias:entry?.bias||'unknown',
+    m5Pattern:entry?.m5?.name||'—',
+    m1Pattern:entry?.m1?.name||'—',
+    m5BodyRatio:Number.isFinite(entry?.m5?.bodyRatio)?Number(entry.m5.bodyRatio.toFixed(3)):null,
+    m1BodyRatio:Number.isFinite(entry?.m1?.bodyRatio)?Number(entry.m1.bodyRatio.toFixed(3)):null,
+    m15Fresh:!!entry?.biasFresh,m5Fresh:!!entry?.m5Fresh,m1Fresh:!!entry?.m1Fresh,
     pattern:pattern?.name||'Tiada engulfing',
     patternType:pattern?.type||'—',
     score,grade,detail,
@@ -103,12 +109,12 @@ function renderSignalLog() {
 }
 function showLogSnapshot(row) {
   selectedLogId=row.id;
-  $('log-replay').innerHTML='<strong>Snapshot candle · '+row.signal+' · '+row.interval+'</strong><p>'+new Date(row.time*1000).toLocaleString('ms-MY')+'</p><div class="log-ohlc"><span>OPEN <b>'+row.o.toFixed(2)+'</b></span><span>HIGH <b>'+row.h.toFixed(2)+'</b></span><span>LOW <b>'+row.l.toFixed(2)+'</b></span><span>CLOSE <b>'+row.c.toFixed(2)+'</b></span></div><p>Pattern: '+row.pattern+' · Confirmation: '+row.score+'/100 ('+row.grade+')</p><p>'+row.detail+'</p>';
+  $('log-replay').innerHTML='<strong>Snapshot candle · '+row.signal+' · '+(row.sourceInterval||row.interval)+'</strong><p>'+new Date(row.time*1000).toLocaleString('ms-MY')+'</p><p>M15 bias: '+(row.m15Bias||'rekod lama')+' · M5: '+(row.m5Pattern||'—')+' · M1: '+(row.m1Pattern||'—')+'</p><div class="log-ohlc"><span>OPEN <b>'+row.o.toFixed(2)+'</b></span><span>HIGH <b>'+row.h.toFixed(2)+'</b></span><span>LOW <b>'+row.l.toFixed(2)+'</b></span><span>CLOSE <b>'+row.c.toFixed(2)+'</b></span></div><p>Pattern: '+row.pattern+' · Confirmation: '+row.score+'/100 ('+row.grade+')</p><p>'+row.detail+'</p>';
 }
 function exportSignalLog() {
   const filter=$('log-filter').value;
   const rows=signalLog.filter(row=>row.interval===state.interval&&(filter==='ALL'||row.signal===filter));
-  const fields=['time','interval','signal','pattern','patternType','score','grade','detail','o','h','l','c'];
+  const fields=['time','interval','chartInterval','sourceInterval','signal','m15Bias','m5Pattern','m1Pattern','m5BodyRatio','m1BodyRatio','m15Fresh','m5Fresh','m1Fresh','pattern','patternType','score','grade','detail','o','h','l','c'];
   const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
   const csv=[fields.join(','),...rows.map(row=>fields.map(field=>quote(row[field])).join(','))].join('\r\n');
   const blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
@@ -157,7 +163,7 @@ function playSignalTone(signal) {
 }
 function pushSignalAlert(signal, candle, detail, scoreGrade) {
   if (!candle) return;
-  const key=[state.interval,candle.t,signal].join('_');
+  const key=['M5',candle.t,signal].join('_');
   if (alertState.lastSignalKey !== key) {
     alertState.lastSignalKey=key;
     const message=alertReasonText(signal,detail,scoreGrade);
@@ -184,7 +190,7 @@ function pushSignalAlert(signal, candle, detail, scoreGrade) {
 }
 function registerPerformanceSignal(signal, candle, pattern, features) {
   if (!candle || !pattern || !['BUY','SELL'].includes(signal)) return;
-  const id = [state.interval, candle.t, signal, pattern.type].join('_');
+  const id = ['M5', candle.t, signal, pattern.type].join('_');
   if (performanceRecords.some(record => record.id === id)) return;
   // XAUUSD pip convention: 1 pip = 0.10 price movement.
   const pipSize = 0.10;
@@ -198,7 +204,13 @@ function registerPerformanceSignal(signal, candle, pattern, features) {
   const tp3 = entry + direction * 200 * pipSize;
   const stop = entry - direction * stopDistance;
   performanceRecords.push({
-    id, symbol:'XAUUSD', interval:state.interval, side:signal,
+    id, symbol:'XAUUSD', interval:state.interval, chartInterval:state.interval, sourceInterval:'5m', side:signal,
+    m15Bias:features?.m15||'unknown',
+    m5Pattern:features?.entryConfirmation?.m5Pattern||pattern.name,
+    m1Pattern:features?.entryConfirmation?.m1Pattern||'—',
+    m5BodyRatio:features?.entryConfirmation?.m5BodyRatio??null,
+    m1BodyRatio:features?.entryConfirmation?.m1BodyRatio??null,
+    confirmationFresh:features?.entryConfirmation?.fresh||null,
     pattern:pattern.name, patternType:pattern.type, signalTime:candle.t,
     entry, stop, target:tp1, tp1, tp2, tp3, pipSize,
     zoneHigh:candle.h, zoneLow:candle.l, zoneTime:candle.t,
@@ -249,7 +261,7 @@ function updatePerformanceOutcomes() {
   for (const record of performanceRecords) {
     const ladder = record.exitModel === 'TP_LADDER_V1';
     const activeLadder = ladder && record.outcome === 'WIN' && record.tp1Hit && !record.tp3Hit;
-    if (record.interval !== state.interval || (record.outcome !== 'PENDING' && !activeLadder)) continue;
+    if ((ladder ? (record.sourceInterval||'5m')!=='5m' : record.interval!==state.interval) || (record.outcome !== 'PENDING' && !activeLadder)) continue;
     const sourceCandles = ladder ? state.entryCandles : state.candles;
     const sourceTf = ladder ? '5m' : record.interval;
     const lastSeen = ladder ? (record.lastProcessedAt || record.signalTime) : record.signalTime;
@@ -1226,10 +1238,16 @@ function renderAnalysis() {
   $('a-signal-tf').textContent='M15 bias → M5 setup + M1 confirm';
   $('a-m15').textContent=(entry?.bias||'unknown').toUpperCase();
   pushSignalAlert(signal,signalRecordCandle,detail,scoreGrade);
-  recordSignalLog(signal,signalRecordCandle,signalRecordPattern,confirmationScore,scoreGrade,detail);
+  recordSignalLog(signal,signalRecordCandle,signalRecordPattern,confirmationScore,scoreGrade,detail,entry);
   const memoryFeatures=signalRecordPattern&&signalRecordCandle&&signal!=='WAIT'?{
     side:signal, patternType:signalRecordPattern.type,
     h1:'not-required', m15:entry?.bias||'unknown',
+    entryConfirmation:{
+      m5Pattern:entry?.m5?.name||'—',m1Pattern:entry?.m1?.name||'—',
+      m5BodyRatio:Number.isFinite(entry?.m5?.bodyRatio)?Number(entry.m5.bodyRatio.toFixed(3)):null,
+      m1BodyRatio:Number.isFinite(entry?.m1?.bodyRatio)?Number(entry.m1.bodyRatio.toFixed(3)):null,
+      fresh:{m15:!!entry?.biasFresh,m5:!!entry?.m5Fresh,m1:!!entry?.m1Fresh}
+    },
     bodyRatio:Number(((entry?.m5?.bodyRatio)||bodyRatio).toFixed(3)),
     nearZone:false,
     rejection:false,
