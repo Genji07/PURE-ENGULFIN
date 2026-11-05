@@ -1,4 +1,4 @@
-const CACHE_NAME = "genji-pwa-v35";
+const CACHE_NAME = "genji-pure-engulfing-v36";
 const APP_FILES = [
   "./index.html",
   "./manifest.json",
@@ -25,7 +25,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key.startsWith("genji-") && key !== CACHE_NAME).map(key => caches.delete(key)));
+    await Promise.all(keys.filter(key => (key.startsWith("genji-pure-engulfing-") && key !== CACHE_NAME) || key === "genji-pwa-v35").map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
