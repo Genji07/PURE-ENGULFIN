@@ -192,35 +192,50 @@ function renderPatternMemory(currentFeatures) {
 function updatePerformanceOutcomes() {
   let changed = false;
   for (const record of performanceRecords) {
-    if (record.interval !== state.interval || record.outcome !== 'PENDING') continue;
     const ladder = record.exitModel === 'TP_LADDER_V1';
+    const activeLadder = ladder && record.outcome === 'WIN' && record.tp1Hit && !record.tp3Hit;
+    if (record.interval !== state.interval || (record.outcome !== 'PENDING' && !activeLadder)) continue;
     const sourceCandles = ladder ? state.entryCandles : state.candles;
     const sourceTf = ladder ? '5m' : record.interval;
+    const lastSeen = ladder ? (record.lastProcessedAt || record.signalTime) : record.signalTime;
     const future = sourceCandles.filter(c =>
-      c.t > record.signalTime && isClosedCandle(c, sourceTf)
+      c.t > lastSeen && isClosedCandle(c, sourceTf)
     ).sort((a,b)=>a.t-b.t).slice(0, ladder ? 1000 : 5);
     for (let i=0;i<future.length;i++) {
       const candle = future[i];
-      record.barsChecked = i + 1;
+      record.barsChecked = (record.barsChecked || 0) + 1;
       if (ladder) {
         const buy = record.side === 'BUY';
         const hitStop = buy ? candle.l <= record.stop : candle.h >= record.stop;
         const hit1 = buy ? candle.h >= record.tp1 : candle.l <= record.tp1;
         const hit2 = buy ? candle.h >= record.tp2 : candle.l <= record.tp2;
         const hit3 = buy ? candle.h >= record.tp3 : candle.l <= record.tp3;
+        record.lastProcessedAt = candle.t;
         // If TP1 and SL first appear inside the same OHLC candle, order is unknowable.
         if (!record.tp1Hit && hitStop && hit1) {
           record.outcome='AMBIGUOUS'; record.resolvedAt=candle.t; changed=true; break;
         }
-        if (hit3 && !hitStop) { record.tp1Hit=true;record.tp2Hit=true;record.tp3Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP3';record.resolvedAt=candle.t;changed=true;break; }
-        if (hit2 && !hitStop) { record.tp1Hit=true;record.tp2Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP2';record.resolvedAt=candle.t;changed=true;break; }
-        if (hit1 && !hitStop) { record.tp1Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP1';record.resolvedAt=candle.t;changed=true;break; }
+        if (hit3 && !hitStop) {
+          record.tp1Hit=true;record.tp2Hit=true;record.tp3Hit=true;
+          record.outcome='WIN';record.resultLabel='PROFIT TP3';record.resolvedAt=candle.t;changed=true;break;
+        }
+        if (hit2 && !hitStop) {
+          record.tp1Hit=true;record.tp2Hit=true;record.outcome='WIN';
+          record.resultLabel='PROFIT TP2';record.resolvedAt=candle.t;changed=true;continue;
+        }
+        if (hit1 && !hitStop) {
+          record.tp1Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP1';
+          record.resolvedAt=candle.t;changed=true;continue;
+        }
         if (hitStop) {
           record.resolvedAt=candle.t; changed=true;
-          if (record.tp1Hit) { record.outcome='WIN';record.resultLabel='PROFIT TP1 · SL selepas TP1'; }
-          else record.outcome='LOSS';
+          if (record.tp1Hit) {
+            record.outcome='WIN';
+            record.resultLabel=record.tp2Hit?'PROFIT TP2 · SL selepas TP2':'PROFIT TP1 · SL selepas TP1';
+          } else record.outcome='LOSS';
           break;
         }
+        if (record.tp1Hit) record.outcome='WIN';
       } else {
         const hitTarget = record.side === 'BUY' ? candle.h >= record.target : candle.l <= record.target;
         const hitStop = record.side === 'BUY' ? candle.l <= record.stop : candle.h >= record.stop;
@@ -229,9 +244,12 @@ function updatePerformanceOutcomes() {
         if (hitStop) { record.outcome='LOSS';record.resolvedAt=candle.t;changed=true;break; }
       }
     }
-    if (record.outcome === 'PENDING' && future.length >= (ladder ? 1000 : 5)) {
-      record.outcome = 'EXPIRED'; record.resolvedAt=future[future.length-1].t;
-      record.barsChecked=future.length; changed=true;
+    if (ladder && record.outcome === 'WIN' && record.tp1Hit && !record.tp3Hit && record.barsChecked >= 1000) {
+      record.resultLabel=(record.tp2Hit?'PROFIT TP2':'PROFIT TP1')+' · TEMPOH TAMAT';
+      record.tp3Hit=true;
+      changed=true;
+    } else if (!ladder && record.outcome === 'PENDING' && future.length >= 5) {
+      record.outcome='EXPIRED';record.resolvedAt=future[4].t;record.barsChecked=5;changed=true;
     }
   }
   if (changed) savePerformanceRecords();
