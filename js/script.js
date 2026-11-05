@@ -3,7 +3,7 @@
 const state = {
   interval: '5m', pollMs: 10000, limit: 200, engDef: 'both',
   candles: [], tick: null, tickUpdatedAt: 0, candleUpdatedAt: 0, trendUpdatedAt: 0, tickLatencyMs: null, candleLatencyMs: null, trendLatencyMs: null, running: false, timer: null,
-  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null
+  candleError: null, tickError: null, patterns: [], zones: [], trendH1: null, trendM15: null, trendH4: null, trendM5: null, trendError: null, trendContextError: null
 };
 let pollingRunId = 0;
 let trendLastAttempt = 0;
@@ -472,25 +472,25 @@ function getTrend(bars, interval) {
 }
 async function fetchTrend() {
   const requestStarted=Date.now();
-  try {
-    const [h4,h1,m15,m5] = await Promise.all([
-      fetchTrendTimeframe('4h'),fetchTrendTimeframe('1h'),
-      fetchTrendTimeframe('15m'),fetchTrendTimeframe('5m')
-    ]);
-    state.trendH4=getTrend(h4,'4h');
-    state.trendH1=getTrend(h1,'1h');
-    state.trendM15=getTrend(m15,'15m');
-    state.trendM5=getTrend(m5,'5m');
-    state.trendError=null;
+  const specs=[['4h','trendH4'],['1h','trendH1'],['15m','trendM15'],['5m','trendM5']];
+  const results=await Promise.allSettled(specs.map(([interval])=>fetchTrendTimeframe(interval)));
+  const missing={label:'DATA TAK ADA',direction:'unknown'};
+  const errors={};
+  results.forEach((result,index)=>{
+    const [interval,key]=specs[index];
+    if(result.status==='fulfilled') state[key]=getTrend(result.value,interval);
+    else { state[key]=missing; errors[interval]=result.reason?.message||'Ralat API'; }
+  });
+  const requiredOk=['1h','15m'].every(tf=>!errors[tf]&&
+    ['bull','bear'].includes(state[tf==='1h'?'trendH1':'trendM15']?.direction));
+  state.trendError=requiredOk?null:['1h','15m'].filter(tf=>errors[tf]).map(tf=>tf.toUpperCase()+': '+errors[tf]).join(' · ')||
+    'Data H1/M15 tidak cukup untuk kira EMA trend.';
+  state.trendContextError=['4h','5m'].filter(tf=>errors[tf]).map(tf=>tf.toUpperCase()+': '+errors[tf]).join(' · ');
+  if(requiredOk){
     state.trendUpdatedAt=Date.now();
     state.trendLatencyMs=state.trendUpdatedAt-requestStarted;
-    return true;
-  } catch(error) {
-    const missing={label:'DATA TAK ADA',direction:'unknown'};
-    state.trendH4=state.trendH1=state.trendM15=state.trendM5=missing;
-    state.trendError=error.message;
-    return false;
   }
+  return requiredOk;
 }
 async function refreshTrendIfNeeded(force=false) {
   if (trendRequest) return trendRequest;
@@ -678,9 +678,10 @@ function renderApiHealth(){
   const tickOk=Boolean(state.tick&&tickAge<=30&&!state.tick.stale&&!state.tickError);
   const candleOk=Boolean(state.candles.length&&candleAge<=45&&!state.candleError);
   const trends=[state.trendH4,state.trendH1,state.trendM15,state.trendM5];
-  const mtfReady=trends.every(x=>x&&x.direction&&x.direction!=='unknown'&&x.direction!=='DATA TAK ADA');
-  const mtfOk=Boolean(mtfReady&&trendAge<=120&&!state.trendError);
-  const failures=[state.tickError,state.candleError,state.trendError].filter(Boolean);
+  const requiredReady=['bull','bear'].includes(state.trendH1?.direction)&&['bull','bear'].includes(state.trendM15?.direction);
+  const mtfOk=Boolean(requiredReady&&trendAge<=180&&!state.trendError);
+  const contextReady=[state.trendH4,state.trendM5].filter(x=>x&&['bull','bear','neutral'].includes(x.direction)).length;
+  const failures=[state.tickError,state.candleError,state.trendError,state.trendContextError].filter(Boolean);
   const allOk=tickOk&&candleOk&&mtfOk,anyData=Boolean(state.tick||state.candles.length||trends.some(Boolean));
   el('api-health-status').textContent=allOk?'SEMUA ONLINE':anyData?'SEMAK DATA':'MENUNGGU';
   el('api-health-status').className='api-health-pill '+(allOk?'ok':anyData?'warn':'');
@@ -691,9 +692,9 @@ function renderApiHealth(){
   el('api-health-candles').textContent=candleOk?'ONLINE':state.candleError?'RALAT API':state.candles.length?'CACHE / LAMA':'MENUNGGU';
   el('api-health-candles').className=candleOk?'ok-text':'bad-text';
   el('api-health-candle-detail').textContent=state.candles.length+' candle tersedia · '+(state.candleUpdatedAt?candleAge+'s sejak API berjaya':'belum ada respons API');
-  el('api-health-mtf').textContent=mtfOk?'4/4 ONLINE':state.trendError?'RALAT / DATA KURANG':trends.filter(x=>x&&x.direction&&x.direction!=='unknown').length+'/4 DATA';
+  el('api-health-mtf').textContent=mtfOk?'H1 + M15 ONLINE':'H1/M15 DATA KURANG';
   el('api-health-mtf').className=mtfOk?'ok-text':'bad-text';
-  el('api-health-mtf-detail').textContent=state.trendUpdatedAt?'Kemas kini '+trendAge+'s lalu'+(state.trendLatencyMs!==null?' · '+state.trendLatencyMs+'ms':''):(state.trendError||'Menunggu empat timeframe');
+  el('api-health-mtf-detail').textContent=(state.trendUpdatedAt?'H1/M15 dikemas kini '+trendAge+'s lalu':'Menunggu data H1/M15')+' · H4/M5 konteks '+contextReady+'/2'+(state.trendContextError?' · '+state.trendContextError:'')+(state.trendLatencyMs!==null?' · '+state.trendLatencyMs+'ms':'');
   el('api-health-latency').textContent=[state.tickLatencyMs,state.candleLatencyMs,state.trendLatencyMs].map(v=>v===null?'—':v+'ms').join(' / ');
   el('api-health-latency-detail').textContent='Tick / Candle / MTF';
   el('api-health-last-check').textContent='Semakan UI: '+new Date().toLocaleTimeString('ms-MY');
@@ -793,7 +794,7 @@ function renderAnalysis() {
   // Signal freshness follows the actual analysis feeds. Tick endpoint is display-only:
   // a stale quote must not block a valid closed-candle setup.
   const candleFresh=!!(state.candleUpdatedAt&&now-state.candleUpdatedAt<=90000&&!state.candleError);
-  const trendFresh=!!(state.trendUpdatedAt&&now-state.trendUpdatedAt<=180000&&!state.trendError);
+  const trendFresh=!!(state.trendUpdatedAt&&now-state.trendUpdatedAt<=180000&&!state.trendError&&['bull','bear'].includes(h1?.direction)&&['bull','bear'].includes(m15?.direction));
   const dataFresh=candleFresh&&trendFresh;
   const trendOK = patternSide && h1 && m15 && h1.direction===patternSide && m15.direction===patternSide;
   const currentPrice=candle?.c;
