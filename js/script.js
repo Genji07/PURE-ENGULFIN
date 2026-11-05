@@ -29,7 +29,17 @@ async function syncBackgroundArchive(){
       const r=await fetch(BACKGROUND_ARCHIVE_URL+'/api/candles?interval='+tf+'&limit=500',{cache:'no-store'});
       if(!r.ok)throw new Error('Candle '+tf+' HTTP '+r.status);
       const data=await r.json();
-      const rows=(data.bars||[]).map(b=>({t:Number(b.open_time),o:Number(b.open),h:Number(b.high),l:Number(b.low),c:Number(b.close),v:Number(b.tick_volume||0)}))
+      const bars=data.bars||[];
+      const latest=bars.length?bars[bars.length-1]:null;
+      const freshness=$('background-fresh-'+tf);
+      if(freshness){
+        const fetchedAt=Number(latest?.fetched_at||0);
+        const age=fetchedAt?Math.max(0,Math.floor(Date.now()/1000-fetchedAt)):Infinity;
+        const label=!Number.isFinite(age)?'TIADA DATA':age<=150?'TERKINI · '+age+'s':age<=300?'LEWAT · '+age+'s':'LAMA · '+Math.floor(age/60)+'m';
+        freshness.textContent=tf.toUpperCase()+': '+label;
+        freshness.dataset.state=!Number.isFinite(age)?'missing':age<=150?'fresh':age<=300?'delayed':'stale';
+      }
+      const rows=bars.map(b=>({t:Number(b.open_time),o:Number(b.open),h:Number(b.high),l:Number(b.low),c:Number(b.close),v:Number(b.tick_volume||0)}))
         .filter(b=>Number.isFinite(b.t)&&[b.o,b.h,b.l,b.c].every(Number.isFinite));
       try{localStorage.setItem('genji_background_archive_candles_v1_'+tf,JSON.stringify(rows));}catch(e){console.warn('GENJI archive cache:',e);}
       const el=$('background-count-'+tf);if(el)el.textContent=rows.length.toLocaleString('en-US');
