@@ -9,7 +9,7 @@
 <link rel="icon" href="icons/genji-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/genji-icon.svg">
 <title>XAUUSD · Pro Chart + Pattern Detection</title>
-<link rel="stylesheet" href="css/style.css?v=genji-background-sync-v1-20261105">
+<link rel="stylesheet" href="css/style.css?v=genji-background-freshness-v2-20261105">
 </head>
 <body>
 <div class="topbar">
@@ -144,6 +144,7 @@
         <button id="btn-sync-background" class="ghost" type="button">Sync sekarang</button>
       </div>
       <div id="background-archive-status" class="memory-verdict">Menyambung ke arkib server…</div>
+      <div class="background-freshness" aria-live="polite"><span id="background-fresh-1m">M1: menyemak…</span><span id="background-fresh-5m">M5: menyemak…</span><span id="background-fresh-15m">M15: menyemak…</span></div>
       <div class="memory-summary background-archive-metrics">
         <div><span>CANDLE M1</span><strong id="background-count-1m">0</strong></div>
         <div><span>CANDLE M5</span><strong id="background-count-5m">0</strong></div>
@@ -372,7 +373,7 @@
   </div>
 </section>
 <footer>GENJI PURE ENGULFING · XAUUSD · Analisis teknikal dan simulasi sejarah, bukan arahan atau jaminan dagangan.</footer>
-<script src="js/script.js?v=genji-background-sync-v1-20261105"></script>
+<script src="js/script.js?v=genji-background-freshness-v2-20261105"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("GENJI PWA:", error)));
