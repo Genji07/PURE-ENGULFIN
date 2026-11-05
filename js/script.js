@@ -953,8 +953,8 @@ function renderAnalysis() {
     {label:'Kekuatan body',score:candle?Math.min(10,Math.round(bodyRatio/0.5*10)):0,max:10},
     {label:'Candle tertutup',score:candle?10:0,max:10}
   ];
-  const confirmationScore=scoreParts.reduce((sum,part)=>sum+part.score,0);
-  const scoreGrade=!candle?'MENUNGGU DATA':!pattern?'TIADA SETUP ENGULFING':confirmationScore>=75?'KUAT':confirmationScore>=55?'SEDERHANA':'LEMAH';
+  let confirmationScore=scoreParts.reduce((sum,part)=>sum+part.score,0);
+  let scoreGrade=!candle?'MENUNGGU DATA':!pattern?'TIADA SETUP ENGULFING':confirmationScore>=75?'KUAT':confirmationScore>=55?'SEDERHANA':'LEMAH';
   const reasons=[];
   let signal='WAIT', detail='Menunggu pattern engulfing yang lengkap dan pengesahan trend H1/M15.';
   if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
@@ -987,6 +987,23 @@ function renderAnalysis() {
   const entry=state.entrySetup;
   const entryFresh=!!(entry&&state.entryUpdatedAt&&Date.now()-state.entryUpdatedAt<=90000&&!state.entryError);
   const entrySignal=entryFresh&&entry.confirmed?(entry.side==='bull'?'BUY':'SELL'):'WAIT';
+  // Score and reasons follow the actual M15 -> M5 -> M1 signal gate.
+  const entryScoreParts=[
+    {label:'Bias M15',score:entryFresh&&entry?.biasFresh&&['bull','bear'].includes(entry?.bias)?20:0,max:20},
+    {label:'Pure Engulfing M5',score:entryFresh&&entry?.m5?.ok&&entry.m5.side===entry.bias&&entry.m5.bodyRatio>=0.35?40:0,max:40},
+    {label:'Confirmation M1',score:entryFresh&&entry?.m1?.ok&&entry.m1.side===entry.bias&&entry.m1.bodyRatio>=0.35?25:0,max:25},
+    {label:'Kesegaran M15/M5/M1',score:entryFresh&&entry?.feedsFresh?15:0,max:15}
+  ];
+  scoreParts.splice(0,scoreParts.length,...entryScoreParts);
+  confirmationScore=entryScoreParts.reduce((sum,part)=>sum+part.score,0);
+  scoreGrade=!entryFresh?'MENUNGGU DATA':confirmationScore>=85?'KUAT':confirmationScore>=60?'SEDERHANA':'BELUM LENGKAP';
+  reasons.splice(0,reasons.length,
+    {ok:!!(entryFresh&&entry?.biasFresh&&['bull','bear'].includes(entry?.bias)),text:'Bias M15: '+(entry?.bias||'unknown').toUpperCase()+'.'},
+    {ok:!!(entryFresh&&entry?.m5?.ok&&entry.m5.side===entry.bias&&entry.m5.bodyRatio>=0.35),text:'Setup M5: '+(entry?.m5?.reason||'Menunggu engulfing M5')+' Body '+(entry?.m5?.bodyRatio!=null?(entry.m5.bodyRatio*100).toFixed(0)+'%':'—')+'.'},
+    {ok:!!(entryFresh&&entry?.m1?.ok&&entry.m1.side===entry.bias&&entry.m1.bodyRatio>=0.35),text:'Confirmation M1: '+(entry?.m1?.reason||'Menunggu confirmation M1')+' Body '+(entry?.m1?.bodyRatio!=null?(entry.m1.bodyRatio*100).toFixed(0)+'%':'—')+'.'},
+    {ok:!!(entryFresh&&entry?.feedsFresh),text:'Kesegaran: M15 '+(entry?.biasFresh?'OK':'LEWAT/TIADA')+' · M5 '+(entry?.m5Fresh?'OK':'LEWAT/TIADA')+' · M1 '+(entry?.m1Fresh?'OK':'LEWAT/TIADA')+'.'},
+    {ok:entrySignal!=='WAIT',text:entrySignal!=='WAIT'?'Semua syarat M15 → M5 → M1 selari.':'Ada syarat belum lengkap atau timeframe bercanggah. Signal dikekalkan WAIT.'}
+  );
   const entryReason=state.entryError?'Ralat data M5/M1: '+state.entryError:
     !entryFresh?'Menunggu data M5/M1 yang segar.':
     !entry?.biasFresh?'Bias M15 tiada atau sudah lama (maksimum 180 saat).':
@@ -1223,10 +1240,10 @@ function renderAnalysis() {
   renderPerformance();
   renderPatternMemory(memoryFeatures);
   const qualityChecks=[
-    {label:'Engulfing candle tertutup',ok:!!(pattern&&pattern.name.includes('Engulfing')&&candle)},
-    {label:'Body strength sekurang-kurangnya 35%',ok:bodyStrong},
+    {label:'Engulfing M5 tertutup',ok:!!(entryFresh&&entry?.m5?.ok)},
+    {label:'Body M5 sekurang-kurangnya 35%',ok:!!(entryFresh&&entry?.m5?.bodyRatio>=0.35)},
     {label:'Bias M15 tersedia',ok:!!entryFresh&&['bull','bear'].includes(entry?.bias)},
-    {label:'Data candle dan MTF segar',ok:!!dataFresh},
+    {label:'Data M15/M5/M1 segar',ok:!!(entryFresh&&entry?.feedsFresh)},
     {label:'Market regime (konteks sahaja)',ok:true},
     {label:'M5 setup + M1 confirmation searah M15',ok:!!(entryFresh&&entry?.confirmed)}
   ];
