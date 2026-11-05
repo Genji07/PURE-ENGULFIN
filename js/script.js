@@ -854,6 +854,36 @@ function renderAnalysis() {
   $('memory-pattern-history').innerHTML=patternMemoryRows.length
     ? patternMemoryRows.slice(0,5).map(x=>'<div class="performance-row"><div><strong>'+x.p.name+'</strong><small>'+new Date(x.c.t*1000).toLocaleString('ms-MY')+' · Body '+(x.ratio*100).toFixed(0)+'% · Persamaan '+x.similarity+'%</small></div><span class="perf-status PENDING">'+x.p.type+'</span></div>').join('')
     : '<p>Belum ada pattern sejarah yang cukup serupa.</p>';
+  // Descriptive historical insights: candle body and pre-pattern EMA trend, grouped by direction/type.
+  const insightRows=closedEngulfings.map(p=>{
+    const c=candles[p.index];
+    const bodyRatio=Math.abs(c.c-c.o)/Math.max(c.h-c.l,1e-8);
+    const priorCloses=candles.slice(0,p.index).filter(x=>isClosedCandle(x,state.interval)).map(x=>x.c);
+    const e9=emaLast(priorCloses,9),e21=emaLast(priorCloses,21);
+    const trend=e9===null||e21===null?'DATA KURANG':e9>e21?'BULLISH':e9<e21?'BEARISH':'SIDEWAYS';
+    const strength=bodyRatio>=0.6?'KUAT':bodyRatio>=0.35?'SEDERHANA':'LEMAH';
+    return {side:p.name.includes('Bullish')?'bull':'bear',name:p.name,type:p.type,bodyRatio,strength,trend,time:c.t};
+  });
+  const bullCount=insightRows.filter(x=>x.side==='bull').length;
+  const bearCount=insightRows.filter(x=>x.side==='bear').length;
+  const strongCount=insightRows.filter(x=>x.strength==='KUAT').length;
+  const alignedCount=insightRows.filter(x=>x.trend!=='DATA KURANG'&&((x.side==='bull'&&x.trend==='BULLISH')||(x.side==='bear'&&x.trend==='BEARISH'))).length;
+  $('memory-insight-bull').textContent=String(bullCount);
+  $('memory-insight-bear').textContent=String(bearCount);
+  $('memory-insight-strong').textContent=String(strongCount);
+  $('memory-insight-aligned').textContent=String(alignedCount);
+  const insightGroups=new Map();
+  insightRows.forEach(row=>{
+    const key=(row.side==='bull'?'BULLISH':'BEARISH')+' · '+row.type+' · BODY '+row.strength+' · EMA '+row.trend;
+    insightGroups.set(key,(insightGroups.get(key)||0)+1);
+  });
+  const rankedInsights=[...insightGroups.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  $('memory-insight-verdict').textContent=insightRows.length
+    ? state.interval+' · '+insightRows.length+' engulfing sejarah. Kumpulan paling kerap: '+rankedInsights[0][0]+' ('+rankedInsights[0][1]+' sampel). Ini kekerapan dalam data dimuatkan, bukan kelebihan atau ramalan.'
+    : 'Belum ada engulfing sejarah tertutup untuk timeframe ini.';
+  $('memory-insight-history').innerHTML=rankedInsights.length
+    ? rankedInsights.slice(0,8).map(([label,count])=>'<div class="performance-row"><div><strong>'+label+'</strong><small>'+state.interval+' · '+(count/insightRows.length*100).toFixed(1)+'% daripada sampel engulfing</small></div><span class="perf-status PENDING">'+count+' sampel</span></div>').join('')
+    : '<p>Insight akan muncul selepas data engulfing tertutup tersedia.</p>';
   // Historical outcome study. Completed observations are retained locally by timeframe.
   // The move is measured from the pattern close to the Nth later CLOSED candle close.
   const outcomeHorizons=[3,5,10];
