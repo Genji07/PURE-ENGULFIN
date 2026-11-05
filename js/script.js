@@ -350,7 +350,9 @@ function renderPerformance() {
 }
 const chart = {
   axisW: 74, timeH: 26, volPct: 0.18, hover: null,
-  dragging: false, dragStartX: 0, dragStartOffset: 0
+  dragging: false, dragStartX: 0, dragStartOffset: 0,
+  pointers: new Map(), pinchStartDistance: 0, pinchStartSpacing: 7,
+  pinchAnchorIndex: 0, pinchAnchorX: 0
 };
 let rafId = null;
 
@@ -1993,17 +1995,49 @@ function bind() {
   };
 
   const canvas = $('chart');
+  const pinchDistance = points => {
+    const pair = [...points.values()].slice(0, 2);
+    if (pair.length < 2) return 0;
+    return Math.hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y);
+  };
+  const pinchMidpoint = points => {
+    const pair = [...points.values()].slice(0, 2);
+    return { x:(pair[0].x+pair[1].x)/2, y:(pair[0].y+pair[1].y)/2 };
+  };
   canvas.onpointerdown = event => {
     canvas.setPointerCapture(event.pointerId);
-    chart.dragging = true;
-    chart.dragStartX = pointerPosition(event).x;
-    chart.dragStartOffset = view.scrollOffset;
+    const point = pointerPosition(event);
+    chart.pointers.set(event.pointerId, point);
+    if (chart.pointers.size >= 2) {
+      chart.dragging = false;
+      const midpoint = pinchMidpoint(chart.pointers);
+      chart.pinchStartDistance = Math.max(1, pinchDistance(chart.pointers));
+      chart.pinchStartSpacing = view.barSpacing;
+      const visible = Math.ceil((canvas.clientWidth-chart.axisW)/view.barSpacing);
+      chart.pinchAnchorIndex = state.candles.length-visible-view.scrollOffset+midpoint.x/view.barSpacing;
+      chart.pinchAnchorX = midpoint.x;
+    } else {
+      chart.dragging = true;
+      chart.dragStartX = point.x;
+      chart.dragStartOffset = view.scrollOffset;
+    }
   };
   canvas.onpointermove = event => {
     const point = pointerPosition(event);
-    if (chart.dragging) {
+    if (chart.pointers.has(event.pointerId)) chart.pointers.set(event.pointerId, point);
+    if (chart.pointers.size >= 2) {
+      const distance = Math.max(1, pinchDistance(chart.pointers));
+      const midpoint = pinchMidpoint(chart.pointers);
+      view.barSpacing = Math.max(view.minBar,Math.min(view.maxBar,
+        chart.pinchStartSpacing * distance / chart.pinchStartDistance));
+      const visible = Math.ceil((canvas.clientWidth-chart.axisW)/view.barSpacing);
+      view.scrollOffset = state.candles.length-visible-
+        (chart.pinchAnchorIndex-midpoint.x/view.barSpacing);
+      clampView();
+      scheduleRender();
+    } else if (chart.dragging) {
       view.scrollOffset = chart.dragStartOffset +
-        (point.x - chart.dragStartX) / view.barSpacing;
+        (point.x-chart.dragStartX)/view.barSpacing;
       clampView();
       scheduleRender();
     } else {
@@ -2015,9 +2049,25 @@ function bind() {
       scheduleRender();
     }
   };
-  canvas.onpointerup = canvas.onpointercancel = () => { chart.dragging = false; };
+  const finishPointer = event => {
+    chart.pointers.delete(event.pointerId);
+    if (chart.pointers.size === 1) {
+      const remaining = [...chart.pointers.values()][0];
+      chart.dragging = true;
+      chart.dragStartX = remaining.x;
+      chart.dragStartOffset = view.scrollOffset;
+    } else {
+      chart.dragging = false;
+    }
+    if (!chart.pointers.size) {
+      chart.hover = null;
+      updateHud();
+    }
+  };
+  canvas.onpointerup = finishPointer;
+  canvas.onpointercancel = finishPointer;
   canvas.onpointerleave = () => {
-    if (!chart.dragging) {
+    if (!chart.dragging && chart.pointers.size < 2) {
       chart.hover = null;
       updateHud();
       scheduleRender();
