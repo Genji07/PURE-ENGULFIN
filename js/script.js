@@ -901,9 +901,18 @@ function renderAnalysis() {
     const id=[state.interval,base.t,side,p.type].join('|');
     currentOutcomeIds.add(id);
     let saved=savedOutcomeRows.find(x=>x.id===id);
+    const priorCloses=candles.slice(0,p.index).filter(x=>isClosedCandle(x,state.interval)).map(x=>x.c);
+    const priorEma9=emaLast(priorCloses,9),priorEma21=emaLast(priorCloses,21);
+    const bodyRatio=Math.abs(base.c-base.o)/Math.max(base.h-base.l,1e-8);
+    const contextTrend=priorEma9===null||priorEma21===null?'DATA KURANG':priorEma9>priorEma21?'BULLISH':priorEma9<priorEma21?'BEARISH':'SIDEWAYS';
+    const bodyStrength=bodyRatio>=0.6?'KUAT':bodyRatio>=0.35?'SEDERHANA':'LEMAH';
     if(!saved){
-      saved={id,interval:state.interval,time:base.t,side,name:p.name,type:p.type,baseClose:base.c,horizons:{}};
+      saved={id,interval:state.interval,time:base.t,side,name:p.name,type:p.type,baseClose:base.c,horizons:{},bodyRatio,bodyStrength,contextTrend};
       savedOutcomeRows.push(saved);
+    } else {
+      if(!Number.isFinite(saved.bodyRatio))saved.bodyRatio=bodyRatio;
+      if(!saved.bodyStrength)saved.bodyStrength=bodyStrength;
+      if(!saved.contextTrend)saved.contextTrend=contextTrend;
     }
     // Keep original reference close; fill each horizon only once, after enough later closed candles exist.
     const later=candles.slice(p.index+1).filter(x=>isClosedCandle(x,state.interval));
@@ -928,6 +937,22 @@ function renderAnalysis() {
     return {horizon,sideStats};
   });
   $('memory-outcome-stats').innerHTML=outcomeStats.map(x=>'<div class="memory-stat-row"><strong>+'+x.horizon+' candle</strong>'+x.sideStats.map(s=>'<span><b>'+(s.side==='bull'?'BULLISH':'BEARISH')+'</b> · '+s.total+' sampel · Positif '+s.positive+' · Negatif '+s.negative+' · Mendatar '+s.flat+' · Purata '+(s.average===null?'—':(s.average>0?'+':'')+s.average.toFixed(2))+'</span>').join('')+'</div>').join('');
+  // Group completed +5-candle directional outcomes by side, body strength and pre-pattern EMA.
+  const contextGroups=new Map();
+  intervalOutcomeRows.forEach(row=>{
+    const result=row.horizons?.['5'];
+    if(!result?.ready)return;
+    const key=(row.side==='bull'?'BULLISH':'BEARISH')+' · BODY '+(row.bodyStrength||'DATA LAMA')+' · EMA '+(row.contextTrend||'DATA LAMA');
+    if(!contextGroups.has(key))contextGroups.set(key,{key,total:0,positive:0,negative:0,flat:0});
+    const group=contextGroups.get(key);group.total++;
+    if(result.classification==='POSITIF')group.positive++;
+    else if(result.classification==='NEGATIF')group.negative++;
+    else group.flat++;
+  });
+  const reliableGroups=[...contextGroups.values()].filter(g=>g.total>=5).sort((a,b)=>b.total-a.total);
+  $('memory-context-outcomes').innerHTML=reliableGroups.length
+    ? reliableGroups.map(g=>'<div class="performance-row"><div><strong>'+g.key+'</strong><small>'+g.total+' sampel · Positif '+g.positive+' · Negatif '+g.negative+' · Mendatar '+g.flat+'</small></div><span class="perf-status PENDING">'+(g.positive/g.total*100).toFixed(1)+'% positif</span></div>').join('')
+    : '<p>Belum ada kumpulan +5 candle dengan minimum 5 sampel lengkap. Data lama tanpa konteks akan dilabel DATA LAMA jika mencukupi.</p>';
   const displayOutcomeRows=intervalOutcomeRows.slice(-12).reverse();
   $('memory-outcome-history').innerHTML=displayOutcomeRows.length
     ? displayOutcomeRows.map(r=>{
