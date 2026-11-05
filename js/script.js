@@ -147,6 +147,7 @@ function registerPerformanceSignal(signal, candle, pattern, features) {
     id, symbol:'XAUUSD', interval:state.interval, side:signal,
     pattern:pattern.name, patternType:pattern.type, signalTime:candle.t,
     entry, stop, target:tp1, tp1, tp2, tp3, pipSize,
+    zoneHigh:candle.h, zoneLow:candle.l, zoneTime:candle.t,
     slPips, exitModel:'TP_LADDER_V1', tp1Hit:false, tp2Hit:false, tp3Hit:false,
     outcome:'PENDING', barsChecked:0, memoryFeatures:features, createdAt:Date.now()
   });
@@ -1728,6 +1729,9 @@ function renderChart() {
     highest = Math.max(highest, candles[i].h);
     lowest = Math.min(lowest, candles[i].l);
   }
+  const chartSignal=performanceRecords.filter(r=>r.interval===state.interval&&['BUY','SELL'].includes(r.side)&&Number.isFinite(r.entry)).sort((a,b)=>b.signalTime-a.signalTime)[0]||null;
+  const signalLevels=chartSignal?[chartSignal.entry,chartSignal.stop,chartSignal.tp1,chartSignal.tp2,chartSignal.tp3].filter(Number.isFinite):[];
+  if(signalLevels.length){highest=Math.max(highest,...signalLevels);lowest=Math.min(lowest,...signalLevels);}
   if (!Number.isFinite(highest) || !Number.isFinite(lowest)) return;
 
   const padding = (highest - lowest) * 0.08 || 1;
@@ -1800,6 +1804,41 @@ function renderChart() {
         ? Math.max(12, y(candle.h) - 14)
         : Math.min(priceHeight - 4, y(candle.l) + 14));
     }
+  }
+
+  // Latest BUY/SELL setup zone and TP/SL ladder, drawn over the candlestick chart.
+  if (chartSignal) {
+    const signalIndex=candles.reduce((best,c,i)=>Math.abs(c.t-chartSignal.signalTime)<Math.abs(candles[best].t-chartSignal.signalTime)?i:best,0);
+    const signalX=x(signalIndex);
+    const zoneHigh=Number.isFinite(chartSignal.zoneHigh)?chartSignal.zoneHigh:chartSignal.entry;
+    const zoneLow=Number.isFinite(chartSignal.zoneLow)?chartSignal.zoneLow:chartSignal.entry;
+    const buy=chartSignal.side==='BUY';
+    const zoneTop=y(Math.max(zoneHigh,zoneLow)),zoneBottom=y(Math.min(zoneHigh,zoneLow));
+    ctx.save();
+    ctx.fillStyle=buy?'rgba(38,166,154,0.20)':'rgba(239,83,80,0.20)';
+    ctx.fillRect(Math.max(0,signalX),zoneTop,Math.max(2,drawWidth-Math.max(0,signalX)),Math.max(3,zoneBottom-zoneTop));
+    ctx.strokeStyle=buy?'rgba(72,210,185,0.9)':'rgba(255,120,120,0.9)';
+    ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.strokeRect(Math.max(0,signalX),zoneTop,Math.max(2,drawWidth-Math.max(0,signalX)),Math.max(3,zoneBottom-zoneTop));
+    ctx.setLineDash([]);
+    const levels=[
+      {label:'ENTRY',value:chartSignal.entry,color:'#f4d35e'},
+      {label:'SL',value:chartSignal.stop,color:'#ff6b6b'},
+      {label:'TP1',value:chartSignal.tp1,color:'#42d392'},
+      {label:'TP2',value:chartSignal.tp2,color:'#28b978'},
+      {label:'TP3',value:chartSignal.tp3,color:'#15945d'}
+    ];
+    for(const level of levels){
+      if(!Number.isFinite(level.value))continue;
+      const yy=y(level.value);
+      ctx.strokeStyle=level.color;ctx.lineWidth=level.label==='ENTRY'?1.7:1.2;
+      ctx.setLineDash(level.label==='ENTRY'?[]:[6,4]);
+      ctx.beginPath();ctx.moveTo(Math.max(0,signalX),yy);ctx.lineTo(drawWidth,yy);ctx.stroke();
+      ctx.setLineDash([]);
+      drawTag(ctx,Math.min(drawWidth-32,Math.max(34,signalX+48)),Math.max(10,Math.min(drawHeight-10,yy)),level.label+' '+level.value.toFixed(2),level.color,'#07111f');
+    }
+    drawTag(ctx,Math.max(42,Math.min(drawWidth-42,signalX)),Math.max(12,zoneTop-13),chartSignal.side+' ZONE',buy?'#168c78':'#c34444','#fff');
+    ctx.restore();
   }
 
   if (state.tick && Number.isFinite(state.tick.mid)) {
