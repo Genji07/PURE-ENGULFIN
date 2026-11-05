@@ -215,7 +215,7 @@ function registerPerformanceSignal(signal, candle, pattern, features) {
     entry, stop, target:tp1, tp1, tp2, tp3, pipSize,
     zoneHigh:candle.h, zoneLow:candle.l, zoneTime:candle.t,
     slPips, exitModel:'TP_LADDER_V1', tp1Hit:false, tp2Hit:false, tp3Hit:false,
-    outcome:'PENDING', barsChecked:0, memoryFeatures:features, createdAt:Date.now()
+    outcome:'PENDING', barsChecked:0, ladderComplete:false, evaluationExpired:false, memoryFeatures:features, createdAt:Date.now()
   });
   performanceRecords = performanceRecords.slice(-500);
   savePerformanceRecords();
@@ -260,8 +260,9 @@ function updatePerformanceOutcomes() {
   let changed = false;
   for (const record of performanceRecords) {
     const ladder = record.exitModel === 'TP_LADDER_V1';
-    const activeLadder = ladder && record.outcome === 'WIN' && record.tp1Hit && !record.tp3Hit;
-    if ((ladder ? (record.sourceInterval||'5m')!=='5m' : record.interval!==state.interval) || (record.outcome !== 'PENDING' && !activeLadder)) continue;
+    const activeLadder = ladder && record.outcome === 'WIN' && record.tp1Hit && !record.ladderComplete && !record.evaluationExpired;
+    if ((ladder ? (record.sourceInterval||'5m')!=='5m' : record.interval!==state.interval) ||
+        (ladder ? (record.outcome !== 'PENDING' && !activeLadder) : record.outcome !== 'PENDING')) continue;
     const sourceCandles = ladder ? state.entryCandles : state.candles;
     const sourceTf = ladder ? '5m' : record.interval;
     const lastSeen = ladder ? (record.lastProcessedAt || record.signalTime) : record.signalTime;
@@ -278,31 +279,40 @@ function updatePerformanceOutcomes() {
         const hit2 = buy ? candle.h >= record.tp2 : candle.l <= record.tp2;
         const hit3 = buy ? candle.h >= record.tp3 : candle.l <= record.tp3;
         record.lastProcessedAt = candle.t;
-        // If TP1 and SL first appear inside the same OHLC candle, order is unknowable.
-        if (!record.tp1Hit && hitStop && hit1) {
-          record.outcome='AMBIGUOUS'; record.resolvedAt=candle.t; changed=true; break;
-        }
-        if (hit3 && !hitStop) {
-          record.tp1Hit=true;record.tp2Hit=true;record.tp3Hit=true;
-          record.outcome='WIN';record.resultLabel='PROFIT TP3';record.resolvedAt=candle.t;changed=true;break;
-        }
-        if (hit2 && !hitStop) {
-          record.tp1Hit=true;record.tp2Hit=true;record.outcome='WIN';
-          record.resultLabel='PROFIT TP2';record.resolvedAt=candle.t;changed=true;continue;
-        }
-        if (hit1 && !hitStop) {
-          record.tp1Hit=true;record.outcome='WIN';record.resultLabel='PROFIT TP1';
-          record.resolvedAt=candle.t;changed=true;continue;
+        // OHLC tidak menunjukkan urutan high/low. Jika SL dan sasaran baharu disentuh dalam candle sama, tandakan AMBIGUOUS.
+        const newTargetHit = (!record.tp1Hit && hit1) || (!record.tp2Hit && hit2) || (!record.tp3Hit && hit3);
+        if (hitStop && newTargetHit) {
+          record.outcome='AMBIGUOUS';
+          record.lastKnownTarget=record.tp2Hit?'TP2':record.tp1Hit?'TP1':'NONE';
+          record.resultLabel='AMBIGUOUS · SL dan sasaran dalam candle sama';
+          record.resolvedAt=candle.t;changed=true;break;
         }
         if (hitStop) {
-          record.resolvedAt=candle.t; changed=true;
-          if (record.tp1Hit) {
+          record.resolvedAt=candle.t;changed=true;
+          if(record.tp1Hit){
             record.outcome='WIN';
-            record.resultLabel=record.tp2Hit?'PROFIT TP2 · SL selepas TP2':'PROFIT TP1 · SL selepas TP1';
-          } else record.outcome='LOSS';
+            record.resultLabel=(record.tp2Hit?'PROFIT TP2':'PROFIT TP1')+' · SL selepas sasaran';
+          }else{
+            record.outcome='LOSS';
+            record.resultLabel='LOSS · SL sebelum TP1';
+          }
           break;
         }
-        if (record.tp1Hit) record.outcome='WIN';
+        if(hit3){
+          record.tp1Hit=true;record.tp2Hit=true;record.tp3Hit=true;
+          record.ladderComplete=true;record.outcome='WIN';
+          record.lastKnownTarget='TP3';record.resultLabel='PROFIT TP3';
+          record.resolvedAt=candle.t;changed=true;break;
+        }
+        if(hit2){
+          record.tp1Hit=true;record.tp2Hit=true;record.outcome='WIN';
+          record.lastKnownTarget='TP2';record.resultLabel='PROFIT TP2';
+          record.resolvedAt=candle.t;changed=true;continue;
+        }
+        if(hit1){
+          record.tp1Hit=true;record.outcome='WIN';record.lastKnownTarget='TP1';
+          record.resultLabel='PROFIT TP1';record.resolvedAt=candle.t;changed=true;continue;
+        }
       } else {
         const hitTarget = record.side === 'BUY' ? candle.h >= record.target : candle.l <= record.target;
         const hitStop = record.side === 'BUY' ? candle.l <= record.stop : candle.h >= record.stop;
@@ -311,9 +321,10 @@ function updatePerformanceOutcomes() {
         if (hitStop) { record.outcome='LOSS';record.resolvedAt=candle.t;changed=true;break; }
       }
     }
-    if (ladder && record.outcome === 'WIN' && record.tp1Hit && !record.tp3Hit && record.barsChecked >= 1000) {
-      record.resultLabel=(record.tp2Hit?'PROFIT TP2':'PROFIT TP1')+' · TEMPOH TAMAT';
-      record.tp3Hit=true;
+    if (ladder && record.outcome === 'WIN' && record.tp1Hit && !record.ladderComplete && record.barsChecked >= 1000) {
+      record.resultLabel=(record.tp2Hit?'PROFIT TP2':'PROFIT TP1')+' · PENILAIAN TAMAT';
+      record.evaluationExpired=true;
+      record.resolvedAt=record.lastProcessedAt||record.signalTime;
       changed=true;
     } else if (!ladder && record.outcome === 'PENDING' && future.length >= 5) {
       record.outcome='EXPIRED';record.resolvedAt=future[4].t;record.barsChecked=5;changed=true;
