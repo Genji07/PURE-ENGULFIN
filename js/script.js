@@ -949,6 +949,26 @@ function renderAnalysis() {
     else if(result.classification==='NEGATIF')group.negative++;
     else group.flat++;
   });
+  // Compare completed +5 outcomes by Malaysia local clock period (UTC+8).
+  const timeGroups=new Map();
+  intervalOutcomeRows.forEach(row=>{
+    const result=row.horizons?.['5'];
+    if(!result?.ready||!Number.isFinite(Number(row.time)))return;
+    const malaysiaHour=new Date(Number(row.time)*1000+8*60*60*1000).getUTCHours();
+    const period=malaysiaHour>=6&&malaysiaHour<11?'PAGI · 06–11'
+      :malaysiaHour>=11&&malaysiaHour<16?'TENGAH HARI · 11–16'
+      :malaysiaHour>=16&&malaysiaHour<20?'PETANG · 16–20':'MALAM · 20–06';
+    const key=(row.side==='bull'?'BULLISH':'BEARISH')+' · '+period;
+    if(!timeGroups.has(key))timeGroups.set(key,{key,total:0,positive:0,negative:0,flat:0});
+    const group=timeGroups.get(key);group.total++;
+    if(result.classification==='POSITIF')group.positive++;
+    else if(result.classification==='NEGATIF')group.negative++;
+    else group.flat++;
+  });
+  const timeRows=[...timeGroups.values()].filter(g=>g.total>=5).sort((a,b)=>b.total-a.total);
+  $('memory-time-outcomes').innerHTML=timeRows.length
+    ? timeRows.map(g=>'<div class="performance-row"><div><strong>'+g.key+'</strong><small>'+g.total+' sampel · Positif '+g.positive+' · Negatif '+g.negative+' · Mendatar '+g.flat+'</small></div><span class="perf-status PENDING">'+(g.positive/g.total*100).toFixed(1)+'% positif</span></div>').join('')
+    : '<p>Belum ada kumpulan waktu dengan minimum 5 sampel outcome +5 lengkap.</p>';
   const readyFiveRows=intervalOutcomeRows.filter(r=>r.horizons?.['5']?.ready);
   const contextReadyRows=readyFiveRows.filter(r=>r.bodyStrength&&r.contextTrend&&r.contextTrend!=='DATA KURANG');
   const legacyRows=readyFiveRows.length-contextReadyRows.length;
