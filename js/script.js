@@ -8,6 +8,8 @@ const state = {
 let pollingRunId = 0;
 let trendLastAttempt = 0;
 let trendRequest = null;
+let trendRequestRunId = 0;
+let trendLastRunId = 0;
 const TREND_REFRESH_MS = 60000;
 const view = { barSpacing: 7, scrollOffset: -5, priceOffset: 0, minBar: 2, maxBar: 40 };
 const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
@@ -690,13 +692,18 @@ async function fetchTrend(runId=pollingRunId) {
   return requiredOk;
 }
 async function refreshTrendIfNeeded(force=false,runId=pollingRunId) {
-  if (trendRequest) return trendRequest;
+  if (trendRequest && trendRequestRunId===runId) return trendRequest;
   const hasTrend=Boolean(state.trendH4&&state.trendH1&&state.trendM15&&state.trendM5);
-  if (!force && hasTrend && Date.now()-trendLastAttempt<TREND_REFRESH_MS) return true;
+  if (!force && hasTrend && trendLastRunId===runId && Date.now()-trendLastAttempt<TREND_REFRESH_MS) return true;
   trendLastAttempt=Date.now();
-  trendRequest=fetchTrend(runId);
-  try { return await trendRequest; }
-  finally { trendRequest=null; }
+  trendLastRunId=runId;
+  trendRequestRunId=runId;
+  const request=fetchTrend(runId);
+  trendRequest=request;
+  try { return await request; }
+  finally {
+    if(trendRequestRunId===runId){trendRequest=null;trendRequestRunId=0;}
+  }
 }
 async function fetchTick(runId=pollingRunId) {
   const requestStarted=Date.now();
