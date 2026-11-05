@@ -782,7 +782,8 @@ function renderAnalysis() {
   const latestEngulfing=closedEngulfings.length?closedEngulfings[closedEngulfings.length-1]:null;
   const h1 = state.trendH1, m15 = state.trendM15;
   const mtf=renderMtfAlignment();
-  const patternSide = pattern?.name.includes('Bullish') ? 'bull' : pattern?.name.includes('Bearish') ? 'bear' : null;
+  const isEngulfing=!!(pattern&&pattern.name.includes('Engulfing'));
+  const patternSide = isEngulfing ? (pattern.name.includes('Bullish') ? 'bull' : pattern.name.includes('Bearish') ? 'bear' : null) : null;
   const body = candle ? Math.abs(candle.c-candle.o) : 0;
   const range = candle ? Math.max(candle.h-candle.l,1e-8) : 1;
   const bodyRatio = body/range;
@@ -817,11 +818,14 @@ function renderAnalysis() {
   const reasons=[];
   let signal='WAIT', detail='Menunggu pattern engulfing yang lengkap dan pengesahan trend H1/M15.';
   if (!candle) reasons.push({ok:false,text:'Belum ada candle tertutup yang sah untuk dianalisis.'});
-  else if (!pattern) {
+  else if (!isEngulfing) {
     const lastText=latestEngulfing
       ? ' Engulfing terakhir: '+latestEngulfing.name+' pada '+new Date(candles[latestEngulfing.index].t*1000).toLocaleString('ms-MY')+'.'
       : ' Tiada engulfing sah ditemui dalam candle tertutup yang dimuatkan.';
-    reasons.push({ok:false,text:'Candle tertutup terkini tiada engulfing. '+closedEngulfings.length+' engulfing ditemui dalam '+candles.filter(c=>isClosedCandle(c,state.interval)).length+' candle tertutup.'+lastText});
+    const message=pattern
+      ? pattern.name+' dikesan, tetapi bukan engulfing. GENJI tidak mengeluarkan BUY/SELL untuk Doji atau Pin Bar.'
+      : 'Candle tertutup terkini tiada engulfing. '+closedEngulfings.length+' engulfing ditemui dalam '+candles.filter(c=>isClosedCandle(c,state.interval)).length+' candle tertutup.'+lastText;
+    reasons.push({ok:false,text:message});
   }
   else {
     reasons.push({ok:true,text:pattern.name+' ('+pattern.type+') dikesan pada candle tertutup terakhir.'});
