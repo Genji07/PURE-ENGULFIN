@@ -9,7 +9,7 @@ let pollingRunId = 0;
 let trendLastAttempt = 0;
 let trendRequest = null;
 const TREND_REFRESH_MS = 60000;
-const view = { barSpacing: 7, scrollOffset: -5, minBar: 2, maxBar: 40 };
+const view = { barSpacing: 7, scrollOffset: -5, priceOffset: 0, minBar: 2, maxBar: 40 };
 const PERFORMANCE_KEY = 'genji_pure_engulfing_performance_v1';
 const SIGNAL_LOG_KEY = 'genji_pure_engulfing_signal_log_v1';
 let signalLog = readSignalLog();
@@ -350,7 +350,8 @@ function renderPerformance() {
 }
 const chart = {
   axisW: 74, timeH: 26, volPct: 0.18, hover: null,
-  dragging: false, dragStartX: 0, dragStartOffset: 0,
+  dragging: false, dragStartX: 0, dragStartY: 0, dragStartOffset: 0,
+  dragStartPriceOffset: 0, dragAxis: null,
   pointers: new Map(), pinchStartDistance: 0, pinchStartSpacing: 7,
   pinchAnchorIndex: 0, pinchAnchorX: 0
 };
@@ -1737,7 +1738,7 @@ function renderChart() {
   if (!Number.isFinite(highest) || !Number.isFinite(lowest)) return;
 
   const padding = (highest - lowest) * 0.08 || 1;
-  const maxPrice = highest + padding, minPrice = lowest - padding;
+  const maxPrice = highest + padding + view.priceOffset, minPrice = lowest - padding + view.priceOffset;
   const priceRange = maxPrice - minPrice;
   const priceHeight = drawHeight;
   const y = price => (maxPrice - price) / priceRange * priceHeight;
@@ -1991,6 +1992,7 @@ function bind() {
   $('btn-reset').onclick = () => {
     view.barSpacing = 7;
     view.scrollOffset = -5;
+    view.priceOffset = 0;
     scheduleRender();
   };
 
@@ -2019,7 +2021,10 @@ function bind() {
     } else {
       chart.dragging = true;
       chart.dragStartX = point.x;
+      chart.dragStartY = point.y;
       chart.dragStartOffset = view.scrollOffset;
+      chart.dragStartPriceOffset = view.priceOffset;
+      chart.dragAxis = null;
     }
   };
   canvas.onpointermove = event => {
@@ -2036,9 +2041,25 @@ function bind() {
       clampView();
       scheduleRender();
     } else if (chart.dragging) {
-      view.scrollOffset = chart.dragStartOffset +
-        (point.x-chart.dragStartX)/view.barSpacing;
-      clampView();
+      const dx=point.x-chart.dragStartX, dy=point.y-chart.dragStartY;
+      if(!chart.dragAxis && Math.max(Math.abs(dx),Math.abs(dy))>6) {
+        chart.dragAxis=Math.abs(dy)>Math.abs(dx)?'vertical':'horizontal';
+      }
+      if(chart.dragAxis==='vertical') {
+        const visible=Math.ceil((canvas.clientWidth-chart.axisW)/view.barSpacing);
+        const first=Math.max(0,Math.floor(state.candles.length-visible-view.scrollOffset)-1);
+        const end=Math.min(state.candles.length,Math.floor(state.candles.length-visible-view.scrollOffset)+visible+2);
+        let hi=-Infinity,lo=Infinity;
+        for(let i=first;i<end;i++){hi=Math.max(hi,state.candles[i].h);lo=Math.min(lo,state.candles[i].l);}
+        const activeSignal=performanceRecords.filter(r=>r.interval===state.interval&&['BUY','SELL'].includes(r.side)&&Number.isFinite(r.entry)).sort((a,b)=>b.signalTime-a.signalTime)[0];
+        if(activeSignal){hi=Math.max(hi,activeSignal.entry,activeSignal.stop,activeSignal.tp1,activeSignal.tp2,activeSignal.tp3);lo=Math.min(lo,activeSignal.entry,activeSignal.stop,activeSignal.tp1,activeSignal.tp2,activeSignal.tp3);}
+        const baseRange=Math.max(1,(hi-lo)*1.16);
+        const drawHeight=Math.max(1,canvas.clientHeight-chart.timeH);
+        view.priceOffset=chart.dragStartPriceOffset+(dy/drawHeight)*baseRange;
+      } else if(chart.dragAxis==='horizontal' || !chart.dragAxis) {
+        view.scrollOffset = chart.dragStartOffset + dx/view.barSpacing;
+        clampView();
+      }
       scheduleRender();
     } else {
       const visible = Math.ceil((canvas.clientWidth - chart.axisW) / view.barSpacing);
