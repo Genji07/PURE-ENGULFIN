@@ -41,13 +41,17 @@ async function syncBackgroundArchive(){
       }
       const rows=bars.map(b=>({t:Number(b.open_time),o:Number(b.open),h:Number(b.high),l:Number(b.low),c:Number(b.close),v:Number(b.tick_volume||0)}))
         .filter(b=>Number.isFinite(b.t)&&[b.o,b.h,b.l,b.c].every(Number.isFinite));
-      try{localStorage.setItem('genji_background_archive_candles_v1_'+tf,JSON.stringify(rows));}catch(e){console.warn('GENJI archive cache:',e);}
+      const archiveKey='genji_background_archive_candles_v1_'+tf;
+      let previousRows=[];
+      try{const saved=JSON.parse(localStorage.getItem(archiveKey)||'[]');if(Array.isArray(saved))previousRows=saved;}catch(e){console.warn('GENJI archive cache read:',e);}
+      const storedRows=mergeBackgroundArchiveRows(previousRows,rows,1500);
+      try{localStorage.setItem(archiveKey,JSON.stringify(storedRows));}catch(e){console.warn('GENJI archive cache:',e);}
       if(tf==='5m'&&rows.length){
         state.entryCandles=mergeArchivedEntryCandles(state.entryCandles);
         if(typeof updatePerformanceOutcomes==='function')updatePerformanceOutcomes();
         if(typeof renderPerformance==='function')renderPerformance();
       }
-      const el=$('background-count-'+tf);if(el)el.textContent=rows.length.toLocaleString('en-US');
+      const el=$('background-count-'+tf);if(el)el.textContent=storedRows.length.toLocaleString('en-US');
     }));
     const pr=await fetch(BACKGROUND_ARCHIVE_URL+'/api/patterns?limit=50',{cache:'no-store'});
     if(!pr.ok)throw new Error('Pattern archive HTTP '+pr.status);
@@ -73,6 +77,16 @@ async function syncBackgroundArchive(){
   }catch(error){status.textContent='Arkib server belum dapat disegerakkan: '+error.message+'. Rekod lama pada peranti kekal selamat.';throw error;}
 }
 
+function mergeBackgroundArchiveRows(previousRows,newRows,max=1500){
+  const merged=new Map();
+  const add=bar=>{
+    if(!bar||!Number.isFinite(Number(bar.t))||![bar.o,bar.h,bar.l,bar.c].every(v=>Number.isFinite(Number(v))))return;
+    merged.set(Number(bar.t),{t:Number(bar.t),o:Number(bar.o),h:Number(bar.h),l:Number(bar.l),c:Number(bar.c),v:Number(bar.v||0)});
+  };
+  (Array.isArray(previousRows)?previousRows:[]).forEach(add);
+  (Array.isArray(newRows)?newRows:[]).forEach(add);
+  return [...merged.values()].sort((a,b)=>a.t-b.t).slice(-max);
+}
 function mergeArchivedEntryCandles(liveBars){
   const merged=new Map();
   const add=bar=>{
@@ -521,12 +535,14 @@ function mergeCandles(existing,incoming,max=10000){
   const map=new Map();existing.forEach(c=>map.set(c.t,c));incoming.forEach(c=>map.set(c.t,c));
   return [...map.values()].sort((a,b)=>a.t-b.t).slice(-max);
 }
-async function fetchCandles(){
+async function fetchCandles(runId=pollingRunId){
   const requestStarted=Date.now();
-  const url='https://biquote.io/api/XAUUSD/ohlc?interval='+encodeURIComponent(state.interval)+'&limit='+state.limit;
+  const requestedInterval=state.interval,requestedLimit=state.limit;
+  const url='https://biquote.io/api/XAUUSD/ohlc?interval='+encodeURIComponent(requestedInterval)+'&limit='+requestedLimit;
   const data=await getJson(url);
   const parsed=parseCandleBars(Array.isArray(data)?data:data.bars);
   if(!parsed.length)throw new Error('API tiada candle sah');
+  if(runId!==pollingRunId||requestedInterval!==state.interval)return;
   state.candles=mergeCandles(state.candles,parsed);
   state.candleUpdatedAt=Date.now();
   state.candleLatencyMs=state.candleUpdatedAt-requestStarted;
@@ -548,11 +564,12 @@ function detectEntryEngulfing(candles,tf){
     name:bull?'Bullish Engulfing':bear?'Bearish Engulfing':'Tiada engulfing',
     reason:bull||bear?'Engulfing '+(bull?'bullish':'bearish')+' pada candle '+tf.toUpperCase()+' tertutup.':'Candle '+tf.toUpperCase()+' tertutup terakhir bukan engulfing.'};
 }
-async function fetchEntrySetup(){
+async function fetchEntrySetup(runId=pollingRunId){
   const [m5,m1]=await Promise.all(['5m','1m'].map(async tf=>{
     const data=await getJson('https://biquote.io/api/XAUUSD/ohlc?interval='+tf+'&limit=120');
     return {tf,bars:parseCandleBars(Array.isArray(data)?data:data.bars)};
   }));
+  if(runId!==pollingRunId)return null;
   state.entryCandles=mergeArchivedEntryCandles(m5.bars);
   const m5Setup=detectEntryEngulfing(m5.bars,'5m'),m1Setup=detectEntryEngulfing(m1.bars,'1m');
   const bias=state.trendM15?.direction;
@@ -649,10 +666,11 @@ function getTrend(bars, interval) {
   if (fast < slow) return {label:'BEARISH', direction:'bear'};
   return {label:'NEUTRAL', direction:'neutral'};
 }
-async function fetchTrend() {
+async function fetchTrend(runId=pollingRunId) {
   const requestStarted=Date.now();
   const specs=[['4h','trendH4'],['1h','trendH1'],['15m','trendM15'],['5m','trendM5']];
   const results=await Promise.allSettled(specs.map(([interval])=>fetchTrendTimeframe(interval)));
+  if(runId!==pollingRunId)return false;
   const missing={label:'DATA TAK ADA',direction:'unknown'};
   const errors={};
   results.forEach((result,index)=>{
@@ -671,18 +689,19 @@ async function fetchTrend() {
   }
   return requiredOk;
 }
-async function refreshTrendIfNeeded(force=false) {
+async function refreshTrendIfNeeded(force=false,runId=pollingRunId) {
   if (trendRequest) return trendRequest;
   const hasTrend=Boolean(state.trendH4&&state.trendH1&&state.trendM15&&state.trendM5);
   if (!force && hasTrend && Date.now()-trendLastAttempt<TREND_REFRESH_MS) return true;
   trendLastAttempt=Date.now();
-  trendRequest=fetchTrend();
+  trendRequest=fetchTrend(runId);
   try { return await trendRequest; }
   finally { trendRequest=null; }
 }
-async function fetchTick() {
+async function fetchTick(runId=pollingRunId) {
   const requestStarted=Date.now();
   const data = await getJson('https://biquote.io/api/XAUUSD');
+  if(runId!==pollingRunId)return;
   const price = Number(data.mid ?? data.bid ?? data.last);
   if (!Number.isFinite(price) || price <= 0) throw new Error('Harga live tidak sah');
   state.tick = {
@@ -796,7 +815,7 @@ function detectPatterns() {
 }
 async function tickOnce(runId) {
   if (!state.running || runId !== pollingRunId) return;
-  const results = await Promise.allSettled([fetchCandles(), fetchTick(), refreshTrendIfNeeded(), fetchEntrySetup()]);
+  const results = await Promise.allSettled([fetchCandles(runId), fetchTick(runId), refreshTrendIfNeeded(false,runId), fetchEntrySetup(runId)]);
   // Ignore responses from an older Start/Stop cycle or a previous timeframe.
   if (!state.running || runId !== pollingRunId) return;
   if(results[0].status==='fulfilled'){updatePerformanceOutcomes();runAiBacktest();}
