@@ -738,11 +738,11 @@ function calculateMarketRegime(candles, interval) {
   const ratio=longRange>0?shortRange/longRange:1;
   let volatility='NORMAL',label='RANGING',trend='SIDEWAYS',reason='';
   if(ratio>=1.6){volatility='TINGGI';label='HIGH VOLATILITY';reason='Range 10 candle terlalu besar berbanding purata 30 candle. Signal ditahan sementara untuk elak keadaan luar biasa.';}
-  else if(ratio<=0.65){volatility='RENDAH';label='LOW VOLATILITY';reason='Pergerakan perlahan; status ini dipaparkan sebagai konteks dan bukan sekatan signal.';}
+  else if(ratio<=0.65){volatility='RENDAH';label='LOW VOLATILITY';reason='Pergerakan terlalu perlahan berbanding julat biasa. Signal ditahan sehingga volatility kembali normal.';}
   else if(spread>=0.0002&&fast>slow){label='TRENDING';trend='BULLISH';reason='EMA 9 di atas EMA 21; trend diklasifikasikan bullish.';}
   else if(spread>=0.0002&&fast<slow){label='TRENDING';trend='BEARISH';reason='EMA 9 di bawah EMA 21; trend diklasifikasikan bearish.';}
   else reason='EMA 9 dan EMA 21 hampir; pasaran ranging. Pengesahan utama tetap H1/M15 dan engulfing.';
-  const allowSignal=ratio<1.6;
+  const allowSignal=label==='TRENDING'&&volatility==='NORMAL';
   return {label,trend,volatility,ratio,spread,allowSignal,reason};
 }
 function renderMarketRegime(regime) {
@@ -788,6 +788,11 @@ function renderAnalysis() {
   const bodyRatio = body/range;
   const bodyStrong = bodyRatio >= 0.5;
   const marketRegime=calculateMarketRegime(candles,state.interval);
+  const now=Date.now();
+  const tickFresh=!!(state.tick&&state.tickUpdatedAt&&now-state.tickUpdatedAt<=30000&&!state.tick.stale&&!state.tickError);
+  const candleFresh=!!(state.candleUpdatedAt&&now-state.candleUpdatedAt<=45000&&!state.candleError);
+  const trendFresh=!!(state.trendUpdatedAt&&now-state.trendUpdatedAt<=120000&&!state.trendError);
+  const dataFresh=tickFresh&&candleFresh&&trendFresh;
   const trendOK = patternSide && h1 && m15 && h1.direction===patternSide && m15.direction===patternSide;
   const currentPrice=candle?.c;
   const nearestZones=getNearestZones(currentPrice);
@@ -825,13 +830,14 @@ function renderAnalysis() {
     reasons.push({ok:!!m15 && m15.direction===patternSide,text:'Trend M15: '+(m15?.label||'BELUM ADA')+'.'});
     if (patternSide==='bull') reasons.push({ok:!!supportRejection,text:zoneContext||'Tiada rejection support yang jelas; semak kedudukan zon support.'});
     if (patternSide==='bear') reasons.push({ok:!!resistanceRejection,text:zoneContext||'Tiada rejection resistance yang jelas; semak kedudukan zon resistance.'});
+    reasons.push({ok:dataFresh,text:'Kesegaran data: '+(dataFresh?'harga, candle dan MTF terkini':'data harga/candle/MTF lama atau tidak lengkap')+'.'});
     reasons.push({ok:marketRegime.allowSignal,text:'Market regime: '+marketRegime.label+' · '+marketRegime.reason});
     reasons.push({ok:mtf.aligned&&mtf.side===patternSide,text:'Multi-timeframe: '+mtf.status+(mtf.side?' · '+mtf.side.toUpperCase():'')+'.'});
-    if (trendOK && bodyStrong && marketRegime.allowSignal && mtf.aligned && mtf.side===patternSide) {
+    if (dataFresh && trendOK && bodyStrong && marketRegime.allowSignal && mtf.aligned && mtf.side===patternSide) {
       signal=patternSide==='bull'?'BUY':'SELL';
       detail='Engulfing, candle tertutup, body dan trend H1/M15 searah. Signal teknikal disahkan.';
     } else {
-      detail=!marketRegime.allowSignal?'Filter market regime: '+marketRegime.label+'. Signal ditahan; kekalkan WAIT.':(!mtf.aligned||mtf.side!==patternSide?'MTF '+mtf.status+' atau tidak searah dengan pattern. Signal ditahan; kekalkan WAIT.':'Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.');
+      detail=!dataFresh?'Data live tidak segar atau tidak lengkap (harga ≤30s, candle ≤45s, MTF ≤120s diperlukan). Signal ditahan; kekalkan WAIT.':!marketRegime.allowSignal?'Market bukan TRENDING normal atau volatility di luar julat. Signal ditahan; kekalkan WAIT.':(!mtf.aligned||mtf.side!==patternSide?'MTF '+mtf.status+' atau tidak searah dengan pattern. Signal ditahan; kekalkan WAIT.':'Pattern dikesan tetapi syarat confirmation belum lengkap. Kekalkan WAIT.');
     }
   }
   $('a-pattern').textContent=pattern?pattern.name:'TIADA';
@@ -1055,8 +1061,9 @@ function renderAnalysis() {
     {label:'Engulfing candle tertutup',ok:!!(pattern&&pattern.name.includes('Engulfing')&&candle)},
     {label:'Body strength sekurang-kurangnya 50%',ok:bodyStrong},
     {label:'Trend H1 + M15 searah',ok:!!trendOK},
-    {label:'Market regime TRENDING',ok:!!marketRegime.allowSignal},
-    {label:'H4/H1/M15/M5 selari',ok:!!(mtf.aligned&&mtf.side===patternSide)}
+    {label:'Data live segar (harga/candle/MTF)',ok:!!dataFresh},
+    {label:'Market regime TRENDING normal',ok:!!marketRegime.allowSignal},
+    {label:'H1 + M15 selari dengan pattern',ok:!!(mtf.aligned&&mtf.side===patternSide)}
   ];
   lastAiContext={signal,detail,score:confirmationScore,pattern,candle,regime:marketRegime,mtf,checks:qualityChecks};
   renderAiLab(lastAiContext);
